@@ -1,0 +1,11 @@
+---
+foobar-server:
+  name_pattern: "^(foobar-server-)(aa|bb|cc)[[:digit:]]{2}.(domain).(tld)$"
+  minimum_uptime: 30m
+  cluster_type: active/active
+  allowed_parallel_restarts: 1
+  reboot_completion_check: /usr/lib/nagios/plugins/check_http -H localhost -p 8000 -u /{:%fqdn%:} -e 404
+  reboot_completion_check_interval: 1s
+  reboot_completion_check_consecutive_successes: 5
+  reboot_completion_check_offset: 2s
+  enabled: true

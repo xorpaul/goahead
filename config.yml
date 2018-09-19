@@ -1,0 +1,8 @@
+---
+save_state_dir: /tmp/gorestart/
+include_dir: ./examples.d/
+timeout: 20s
+ssl_client_cert_ca_file: ./ssl/self-signed-rootca.pem
+ssl_certificate_file: ./ssl/gorestart.pem
+ssl_private_key: ./ssl/gorestart.key
+ssl_require_and_verify_client_cert: false

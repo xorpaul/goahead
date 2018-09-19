@@ -1,0 +1,9 @@
+---
+foobar-db:
+  name_pattern: "^(foobar-)(aa|bb)[[:digit:]]{2}.(domain).(tld)$"
+  cluster_type: active/active
+  allowed_parallel_restarts: 1
+  reboot_completion_check: /usr/lib/nagios/plugins/check_http -H {:%fqdn%:} -S -p 8140 -e 404
+  reboot_completion_check_interval: 10s
+  reboot_completion_check_consecutive_successes: 5
+  reboot_completion_check_offset: 20s
