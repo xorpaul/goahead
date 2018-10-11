@@ -8,8 +8,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// ConfigSettings contains the key value pairs from the config file
-type ConfigSettings struct {
+// configSettings contains the key value pairs from the config file
+type configSettings struct {
 	Timeout                    time.Duration `yaml:"timeout"`
 	IncludeDir                 string        `yaml:"include_dir"`
 	ListenAddress              string        `yaml:"listen_address"`
@@ -19,23 +19,23 @@ type ConfigSettings struct {
 	RequireAndVerifyClientCert bool          `yaml:"ssl_require_and_verify_client_cert"`
 	ClientCertCaFile           string        `yaml:"ssl_client_cert_ca_file"`
 	SaveStateDir               string        `yaml:"save_state_dir"`
+	LogBaseDir                 string        `yaml:"log_base_dir"`
 }
 
-// readConfigfile creates the ConfigSettings struct from the config file
-func readConfigfile(configFile string) ConfigSettings {
-	Debugf("Trying to read config file: " + configFile)
+// readConfigfile creates the configSettings struct from the config file
+func readConfigfile(configFile string) configSettings {
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		Fatalf("readConfigfile(): There was an error parsing the config file " + configFile + ": " + err.Error())
 	}
 
-	var config ConfigSettings
+	var config configSettings
 	err = yaml.Unmarshal([]byte(data), &config)
 	if err != nil {
 		Fatalf("In config file " + configFile + ": YAML unmarshal error: " + err.Error())
 	}
 
-	//fmt.Print("config: ")
+	fmt.Print("config: ")
 	fmt.Printf("%+v\n", config)
 
 	// set default timeout to 5 seconds if no timeout setting found
@@ -60,9 +60,9 @@ func readConfigfile(configFile string) ConfigSettings {
 		config.ListenAddress = "0.0.0.0"
 	}
 
-	// set default save state directory to "/tmp/gorestart/"
+	// set default save state directory to "/tmp/goahead/"
 	if len(config.SaveStateDir) < 1 {
-		config.SaveStateDir = "/tmp/gorestart/"
+		config.SaveStateDir = "/tmp/goahead/"
 	}
 	config.SaveStateDir = checkDirAndCreate(config.SaveStateDir, "config setting from config file "+configFile)
 

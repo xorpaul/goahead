@@ -28,7 +28,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 func serve() {
 
 	router := mux.NewRouter()
-	AddV1Routes(router.PathPrefix("/v1").Subrouter())
+	addV1Routes(router.PathPrefix("/v1").Subrouter())
+	addRoutes(router)
 
 	// TLS stuff
 	tlsConfig := &tls.Config{}

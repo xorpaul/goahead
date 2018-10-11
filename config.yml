@@ -1,8 +1,11 @@
 ---
-save_state_dir: /tmp/gorestart/
+listen_address: 127.0.0.1
+listen_port: 8443
+log_base_dir: /tmp/goahead/
+save_state_dir: /tmp/goahead/
 include_dir: ./examples.d/
 timeout: 20s
 ssl_client_cert_ca_file: ./ssl/self-signed-rootca.pem
-ssl_certificate_file: ./ssl/gorestart.pem
-ssl_private_key: ./ssl/gorestart.key
+ssl_certificate_file: ./ssl/goahead.pem
+ssl_private_key: ./ssl/goahead.key
 ssl_require_and_verify_client_cert: false

@@ -2,8 +2,10 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -226,4 +228,54 @@ func randSeq() string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func writeStructJSONFile(file string, v interface{}) {
+	f, err := os.Create(file)
+	if err != nil {
+		Warnf("Could not write JSON file " + file + " " + err.Error())
+	}
+	defer f.Close()
+	json, err := json.Marshal(v)
+	if err != nil {
+		Warnf("Could not encode JSON file " + file + " " + err.Error())
+	}
+	f.Write(json)
+}
+
+func readClusterStateFile(file string) clusterState {
+	Debugf("Trying to read json file: " + file)
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		Fatalf("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
+	}
+
+	var cs clusterState
+	err = json.Unmarshal([]byte(data), &cs)
+	if err != nil {
+		Fatalf("In json file " + file + ": JSON unmarshal error: " + err.Error())
+	}
+	return cs
+}
+
+func readAckFile(file string, res response) response {
+	Debugf("Trying to read json file: " + file)
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		Fatalf("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
+	}
+
+	err = json.Unmarshal([]byte(data), &res)
+	if err != nil {
+		Fatalf("In json file " + file + ": JSON unmarshal error: " + err.Error())
+	}
+	return res
+}
+
+func keysString(m map[string]struct{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
