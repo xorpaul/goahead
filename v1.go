@@ -23,17 +23,17 @@ type response struct {
 	Timestamp      time.Time `json:"timestamp"`
 	Goahead        bool      `json:"go_ahead"`
 	UnknownHost    bool      `json:"unknown_host"`
-	AskagainIn     string    `json:"ask_again_in"`
+	AskagainIn     string    `json:"ask_again_in,omitempty"`
 	RequestID      string    `json:"request_id"`
 	FoundCluster   string    `json:"found_cluster"`
 	RequestingFqdn string    `json:"requesting_fqdn"`
-	Message        string    `json:"message"`
+	Message        string    `json:"message,omitempty"`
+	ReportedUptime string    `json:"reported_uptime"`
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, rid string, payload interface{}) {
 	response, _ := json.Marshal(payload)
 
-	mainLogger.Info("Sending response " + string(response))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
@@ -50,7 +50,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	res.Timestamp = time.Now()
 	res.RequestID = randSeq()
 	res.Message = "HealthHandler!"
-	res.AskagainIn = strconv.Itoa(rand.Intn(500)) + "s"
 	res.UnknownHost = true
 
 	respondWithJSON(w, http.StatusOK, res.RequestID, res)
@@ -62,7 +61,6 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 	ip := strings.Split(r.RemoteAddr, ":")[0]
 	method := r.Method
 	rid := randSeq()
-	mainLogger := mainLog.WithFields(logrus.Fields{"request_id": rid})
 	//bodyBytes, err := ioutil.ReadAll(r.Body)
 	//if err != nil {
 	//	Warnf("Could not read HTTP body!")
@@ -98,20 +96,21 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 	res.Timestamp = timestamp
 	res.RequestID = rid
 	res.RequestingFqdn = request.Fqdn
+	res.ReportedUptime = request.Uptime
 	// Default response if cluster/fqdn is unknown
-	res.AskagainIn = strconv.Itoa(rand.Intn(500)) + "s"
 	res.Goahead = false
 	res.UnknownHost = true
 	for c := range clusterSettings {
-		clusterLogger
-		// TODO
+		mutex.Lock()
+		clusterLogger := clusterLoggers[c].WithFields(logrus.Fields{"request_id": res.RequestID, "fqdn": request.Fqdn})
+		mutex.Unlock()
 		if !clusterSettings[c].Enabled {
-			mainLogger.Debug("Skipping disabled Cluster setting " + c)
+			clusterLogger.Debug("Skipping disabled Cluster setting " + c)
 			continue
 		}
-		mainLogger.Debug("Checking against Cluster setting " + c)
+		clusterLogger.Debug("Checking against Cluster setting " + c)
 		if regexp.MustCompile(clusterSettings[c].NamePattern).MatchString(request.Fqdn) {
-			mainLogger.Debug("Found matching name pattern " + clusterSettings[c].NamePattern + " with fqdn from request " + request.Fqdn)
+			clusterLogger.Debug("Found matching name pattern " + clusterSettings[c].NamePattern + " with fqdn from request " + request.Fqdn)
 			res.UnknownHost = false
 			res.FoundCluster = c
 			res.Goahead = false
@@ -119,7 +118,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 			fqdnBlacklisted := false
 			for _, blacklistRegex := range clusterSettings[c].BlacklistNamePattern {
 				if regexp.MustCompile(blacklistRegex).MatchString(request.Fqdn) {
-					mainLogger.Debug("Found matching blacklist name pattern: " + blacklistRegex + " Preventing restart...")
+					clusterLogger.Debug("Found matching blacklist name pattern: " + blacklistRegex + " Preventing restart...")
 					// make the client exit
 					res.UnknownHost = true
 					res.Message = "Found matching blacklist name pattern: " + blacklistRegex + " for FQDN: " + request.Fqdn + " Preventing restart!"
@@ -135,51 +134,54 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			clusterLogger.Infof("Received " + string(r.RequestURI) + " request from " + request.Fqdn)
 			if strings.HasPrefix(r.RequestURI, "/v1/inquire/") {
 				res.Message = "No reason to restart"
-				if uptime.Seconds() > clusterSettings[c].MinimumUptime.Seconds() {
-					res.Message = "Your reported uptime " + time.Duration.String(uptime) + " is higher than the Configured minimum uptime " + time.Duration.String(clusterSettings[c].MinimumUptime) + " of the cluster " + c
-				} else {
-					inquireResult := checkAckFileInquire(request, res)
-					if inquireResult.InquireToRestart {
-						res.Message = inquireResult.Reason
-					}
+				inquireResult := checkAckFileInquire(request, res, clusterLogger)
+				inquireResult = checkChecksInquire(request, res, clusterLogger)
+				if inquireResult.InquireToRestart {
+					res.Message = inquireResult.Reason
 				}
+				clusterLogger.Infof("Responding with %+v", res)
 				respondWithJSON(w, http.StatusOK, rid, res)
 				return
 			} else {
-
 				if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
-					res.AskagainIn = time.Duration.String(clusterSettings[c].MinimumUptime)
-					mainLogger.Debug("Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime)
+					res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime
+					clusterLogger.Info(res.Message)
 					respondWithJSON(w, http.StatusOK, rid, res)
 					return
 				}
 
 				res.AskagainIn = strconv.Itoa(rand.Intn(30)) + "s"
-				result := checkAckFile(request, res)
+				result := checkAckFile(request, res, clusterLogger)
 				if result.FqdnGoAhead {
-					result = checkClusterState(res, result)
+					result = checkClusterState(res, result, clusterLogger)
 				}
 				if result.FqdnGoAhead && result.ClusterGoAhead {
+					res.Message = result.Reason
 					res.Goahead = true
-					res.AskagainIn = "0s"
+					triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, clusterLogger)
+					clusterLogger.Debug("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
 					select {
 					case checkCluster <- clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}:
-						mainLogger.Debug("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
 					default:
 					}
 				} else {
 					res.Message = result.Reason
 				}
 			}
+			clusterLogger.Infof("Responding with %+v", res)
 			respondWithJSON(w, http.StatusOK, rid, res)
 			return
 		} else {
-			mainLogger.Debug("Name pattern " + clusterSettings[c].NamePattern + " does not match with fqdn from request " + request.Fqdn)
+			clusterLogger.Debug("Name pattern " + clusterSettings[c].NamePattern + " does not match with fqdn from request " + request.Fqdn)
 			res.Message = "FQDN " + request.Fqdn + " did not match any known cluster"
 		}
 	}
+	unknownLogger.Infof("Responding with %+v", res)
+	res.FoundCluster = "unknown"
+	saveAckFile(res, unknownLogger)
 	respondWithJSON(w, http.StatusOK, rid, res)
 
 }

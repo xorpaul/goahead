@@ -7,14 +7,18 @@ foobar-server:
   minimum_uptime: 30m
   cluster_type: active/active
   allowed_parallel_restarts: 2
-  reboot_completion_check: /usr/lib/nagios/plugins/check_http -H localhost -p 8000 -u /{:%fqdn%:} -e 404
-  reboot_completion_check_interval: 1s
-  reboot_completion_check_consecutive_successes: 5
-  reboot_completion_check_offset: 2h
+  reboot_goahead_actions:
+    - ./tests/goahead_action.sh {:%fqdn%:} {:%cluster%:}
+  reboot_completion_check: ./tests/always-true.sh
+  reboot_completion_check_interval: 0s
+  reboot_completion_check_consecutive_successes: 3
+  reboot_completion_check_offset: 6h
+  reboot_completion_actions:
+    - ./tests/reboot_successful_action.sh {:%fqdn%:} {:%cluster%:}
   reboot_completion_panic_threshold: 3h
   reboot_completion_panic_action: 
-    - mail:
+    mail:
         - xorpaul@gmail.com
-    - script1:
-        - touch /tmp/{:%fqdn%:}_panic
+    scripts:
+        - /tmp/{:%fqdn%:}_panic
   enabled: true

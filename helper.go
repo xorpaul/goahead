@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
+	log "github.com/sirupsen/logrus"
 )
 
 // ExecResult contains the exit code and output of an external command (e.g. git)
@@ -120,7 +121,6 @@ func checkDirAndCreate(dir string, name string) string {
 		Fatalf("checkDirAndCreate(): Error: dir setting '" + name + "' missing! Exiting!")
 	}
 	dir = normalizeDir(dir)
-	Debugf("Using as " + name + ": " + dir)
 	return dir
 }
 
@@ -139,10 +139,7 @@ func createOrPurgeDir(dir string, callingFunction string) {
 }
 
 func purgeDir(dir string, callingFunction string) {
-	if !fileExists(dir) {
-		Debugf("Unnecessary to remove dir: " + dir + " it does not exist. Called from " + callingFunction)
-	} else {
-		Debugf("Trying to remove: " + dir + " called from " + callingFunction)
+	if fileExists(dir) {
 		if err := os.RemoveAll(dir); err != nil {
 			log.Print("purgeDir(): os.RemoveAll() error: removing dir failed: ", err)
 			if err = syscall.Unlink(dir); err != nil {
@@ -152,15 +149,15 @@ func purgeDir(dir string, callingFunction string) {
 	}
 }
 
-func executeCommand(command string, timeout int, allowFail bool) ExecResult {
-	Debugf("Executing " + command)
+func executeCommand(command string, timeout int, allowFail bool, logger *log.Entry) ExecResult {
+	logger.Info("Executing " + command)
 	parts := strings.SplitN(command, " ", 2)
 	cmd := parts[0]
 	cmdArgs := []string{}
 	if len(parts) > 1 {
 		args, err := shellquote.Split(parts[1])
 		if err != nil {
-			Debugf("err: " + fmt.Sprint(err))
+			logger.Warn("err: " + fmt.Sprint(err))
 		} else {
 			cmdArgs = args
 		}
@@ -174,13 +171,13 @@ func executeCommand(command string, timeout int, allowFail bool) ExecResult {
 		er.returnCode = msg.Sys().(syscall.WaitStatus).ExitStatus()
 	}
 	if allowFail && err != nil {
-		Debugf("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
+		logger.Debug("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
 	} else {
-		Verbosef("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
+		logger.Debug("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
 	}
 	if err != nil {
 		if !allowFail {
-			Fatalf("executeCommand(): command failed: " + command + " " + err.Error() + "\nOutput: " + string(out))
+			logger.Warn("executeCommand(): command failed: " + command + " " + err.Error() + "\nOutput: " + string(out))
 		} else {
 			er.returnCode = 1
 			er.output = fmt.Sprint(err)
@@ -243,31 +240,31 @@ func writeStructJSONFile(file string, v interface{}) {
 	f.Write(json)
 }
 
-func readClusterStateFile(file string) clusterState {
-	Debugf("Trying to read json file: " + file)
+func readClusterStateFile(file string, cluster string, clusterLogger *log.Entry) clusterState {
+	clusterLogger.Debug("Trying to read json file: " + file)
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		Fatalf("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
+		clusterLogger.Warn("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
 	}
 
 	var cs clusterState
 	err = json.Unmarshal([]byte(data), &cs)
 	if err != nil {
-		Fatalf("In json file " + file + ": JSON unmarshal error: " + err.Error())
+		clusterLogger.Warn("In json file " + file + ": JSON unmarshal error: " + err.Error())
 	}
 	return cs
 }
 
-func readAckFile(file string, res response) response {
-	Debugf("Trying to read json file: " + file)
+func readAckFile(file string, res response, cluster string, clusterLogger *log.Entry) response {
+	clusterLogger.Debug("Trying to read json file: " + file)
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		Fatalf("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
+		clusterLogger.Warn("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
 	}
 
 	err = json.Unmarshal([]byte(data), &res)
 	if err != nil {
-		Fatalf("In json file " + file + ": JSON unmarshal error: " + err.Error())
+		clusterLogger.Warn("In json file " + file + ": JSON unmarshal error: " + err.Error())
 	}
 	return res
 }
@@ -278,4 +275,36 @@ func keysString(m map[string]struct{}) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+func initLogger(fileName string) *log.Entry {
+	log.Debug("setting up log file:" + filepath.Join(config.LogBaseDir, fileName+".log"))
+	var logrusLog = log.New()
+	file, err := os.OpenFile(filepath.Join(config.LogBaseDir, fileName+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		logrusLog.Out = file
+	} else {
+		log.Fatal("Failed to log to file " + filepath.Join(config.LogBaseDir, fileName+".log") + " Error: " + err.Error())
+	}
+	if debug {
+		logrusLog.SetLevel(log.DebugLevel)
+	}
+	logger := logrusLog.WithFields(log.Fields{})
+	return logger
+}
+
+func compareDurationString(a string, b string) string {
+	da, err := time.ParseDuration(a)
+	if err != nil {
+		Warnf("Can not convert value " + a + " of your uptime to a golang Duration. Valid time units are 300ms, 1.5h or 2h45m.")
+	}
+	db, err := time.ParseDuration(b)
+	if err != nil {
+		Warnf("Can not convert value " + b + " of your uptime to a golang Duration. Valid time units are 300ms, 1.5h or 2h45m.")
+	}
+
+	if da.Seconds() < db.Seconds() {
+		return "shorter"
+	}
+	return "longer"
 }

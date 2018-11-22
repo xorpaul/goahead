@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -35,8 +34,8 @@ func readConfigfile(configFile string) configSettings {
 		Fatalf("In config file " + configFile + ": YAML unmarshal error: " + err.Error())
 	}
 
-	fmt.Print("config: ")
-	fmt.Printf("%+v\n", config)
+	//fmt.Print("config: ")
+	//fmt.Printf("%+v\n", config)
 
 	// set default timeout to 5 seconds if no timeout setting found
 	if config.Timeout == 0 {
