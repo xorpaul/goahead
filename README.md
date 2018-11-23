@@ -1,6 +1,7 @@
 # goahead
 Simple service that allows or denies server / OS restarts.
 
+Client can be found here: https://github.com/xorpaul/goahead_client
 
 ### workflow
 
