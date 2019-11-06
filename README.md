@@ -23,17 +23,17 @@ foobar-server:
   blacklist_name_pattern:
     - ".*-standalone-.*"
     - ".*-black-.*"
-  minimum_uptime: 30m
+  minimum_uptime: 24h
   cluster_type: active/active
   allowed_parallel_restarts: 2
   reboot_goahead_actions:
-    - ./tests/goahead_action.sh {:%fqdn%:} {:%cluster%:}
-  reboot_completion_check: ./tests/always-true.sh
-  reboot_completion_check_interval: 0s
+    - /etc/goahead/goahead_hooks.d/notify_admins.sh {:%fqdn%:} {:%cluster%:}
+  reboot_completion_check: /etc/goahead/reboot_completion_checks.d/check.sh {:%fqdn%:}
+  reboot_completion_check_interval: 15s
   reboot_completion_check_consecutive_successes: 3
-  reboot_completion_check_offset: 6h
+  reboot_completion_check_offset: 15m
   reboot_completion_actions:
-    - ./tests/reboot_successful_action.sh {:%fqdn%:} {:%cluster%:}
+    - /etc/goahead/goahead_hooks.d/notify_admins.sh {:%fqdn%:} {:%cluster%:}
   reboot_completion_panic_threshold: 3h
 ```
 
