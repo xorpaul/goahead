@@ -63,10 +63,11 @@ func readClusterSetting(clusterSettingsFile string) {
 }
 
 // triggerRebootGoaheadActions executes optional scripts that should run, when a host recieved the go_ahead to restart
-func triggerRebootGoaheadActions(fqdn string, cluster string, clusterLogger *logrus.Entry) {
+func triggerRebootGoaheadActions(fqdn string, cluster string, uptime string, clusterLogger *logrus.Entry) {
 	for _, action := range clusterSettings[cluster].RebootGoaheadActions {
 		command := strings.Replace(action, "{:%fqdn%:}", fqdn, -1)
 		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
+		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
 		er := executeCommand(command, 5, true, clusterLogger)
 		clusterLogger.Info("goahead action result of "+command+" is ", er.returnCode)
@@ -74,11 +75,12 @@ func triggerRebootGoaheadActions(fqdn string, cluster string, clusterLogger *log
 }
 
 // triggerRebootCompletionActions executes optional scripts that should run, when a host is flagged as sucsessfully rebooted
-func triggerRebootCompletionActions(fqdn string, cluster string, clusterLogger *logrus.Entry) {
+func triggerRebootCompletionActions(fqdn string, cluster string, uptime string, clusterLogger *logrus.Entry) {
 	for _, action := range clusterSettings[cluster].RebootCompletionActions {
 		clusterLogger.Info("found reboot completion action:" + action)
 		command := strings.Replace(action, "{:%fqdn%:}", fqdn, -1)
 		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
+		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
 		er := executeCommand(command, 5, true, clusterLogger)
 		clusterLogger.Info("reboot completion action result of "+command+" is ", er.returnCode)

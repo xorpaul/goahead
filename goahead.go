@@ -21,11 +21,12 @@ var (
 	clusterSettings       map[string]clusterSetting
 	sleepingClusterChecks map[string]clusterCheck
 	checkCluster          chan clusterCheck
-	startCheckerChannel   chan string
+	startCheckerChannel   chan request
 	mutex                 sync.Mutex
 	clusterLoggers        map[string]*logrus.Entry
 	mainLogger            *logrus.Entry
 	unknownLogger         *logrus.Entry
+	checkerLogger         *logrus.Entry
 )
 
 func main() {
@@ -51,10 +52,11 @@ func main() {
 	clusterSettings = make(map[string]clusterSetting)
 	checkCluster = make(chan clusterCheck)
 	sleepingClusterChecks = make(map[string]clusterCheck)
-	startCheckerChannel = make(chan string)
+	startCheckerChannel = make(chan request)
 
 	mainLogger = initLogger("goahead")
 	unknownLogger = initLogger("unknown")
+	checkerLogger = initLogger("checker")
 
 	if len(config.IncludeDir) > 0 {
 		if isDir(config.IncludeDir) {
@@ -78,10 +80,10 @@ func main() {
 	mainLogger.Infof("%+v\n", clusterSettings)
 
 	// check for previously create cluster state files and check if I need to restart checker
-	go checkCurrentClusterStates()
+	checkCurrentClusterStates()
 
 	go serve()
-	go checkForRebootedSystems()
+	checkForRebootedSystems()
 
 	select {}
 
