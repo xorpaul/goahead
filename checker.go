@@ -28,13 +28,14 @@ func checkForRebootedSystems() {
 			sleepingClusterChecks[cc.Fqdn] = cc
 			mutex.Unlock()
 
+			req := request{}
 			select {
 			case <-time.After(cc.Csetting.RebootCompletionCheckOffset):
 				checkerLogger.Info("Waking up check from time.After sleep for " + cc.Csetting.RebootCompletionCheckOffset.String())
 				// TODO do panic stuff
 				break
-			case fqdn := <-startCheckerChannel:
-				checkerLogger.Info("Received inquire request from FQDN " + fqdn + " Interrupting reboot_completion_check_offset sleep!")
+			case req = <-startCheckerChannel:
+				checkerLogger.Info("Received inquire request from FQDN " + req.Fqdn + " Interrupting reboot_completion_check_offset sleep!")
 				mutex.Lock()
 				delete(sleepingClusterChecks, cc.Fqdn)
 				mutex.Unlock()
@@ -51,7 +52,7 @@ func checkForRebootedSystems() {
 				checkerLogger.Info("Check result of "+command+" is ", er.returnCode)
 
 				if er.returnCode == 0 {
-					successfulChecks += 1
+					successfulChecks++
 					checkerLogger.Info("Increasing successful check counter to " + strconv.Itoa(successfulChecks) + " for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
 					if successfulChecks >= cc.Csetting.RebootCompletionCheckConsecutiveSuccesses {
 						break
@@ -67,7 +68,7 @@ func checkForRebootedSystems() {
 			clusterLogger := clusterLoggers[cc.Cluster]
 			mutex.Unlock()
 			clusterLogger.Info("fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster)
-			triggerRebootCompletionActions(cc.Fqdn, cc.Cluster, clusterLogger)
+			triggerRebootCompletionActions(cc.Fqdn, cc.Cluster, req.Uptime, clusterLogger)
 			//deleteAckFile(cc.Fqdn, cc.Cluster)
 			// decrement current restarts for cluster
 			modifyClusterState(cc.Cluster, cc.Fqdn, "remove", clusterLogger)

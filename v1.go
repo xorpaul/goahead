@@ -161,7 +161,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				if result.FqdnGoAhead && result.ClusterGoAhead {
 					res.Message = result.Reason
 					res.Goahead = true
-					triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, clusterLogger)
+					triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
 					clusterLogger.Debug("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
 					select {
 					case checkCluster <- clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}:

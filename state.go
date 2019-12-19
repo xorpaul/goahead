@@ -42,7 +42,7 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 				// Interrupt a reboot completion check if there is one still sleeping
 				//clusterLogger.Info("Interrupting sleeping reboot completion check for " + request.Fqdn + " inside cluster " + res.FoundCluster)
 				select {
-				case startCheckerChannel <- req.Fqdn:
+				case startCheckerChannel <- req:
 				default:
 				}
 			}
