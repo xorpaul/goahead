@@ -26,7 +26,6 @@ var (
 	clusterLoggers        map[string]*logrus.Entry
 	mainLogger            *logrus.Entry
 	unknownLogger         *logrus.Entry
-	checkerLogger         *logrus.Entry
 )
 
 func main() {
@@ -56,22 +55,28 @@ func main() {
 
 	mainLogger = initLogger("goahead")
 	unknownLogger = initLogger("unknown")
-	checkerLogger = initLogger("checker")
 
 	if len(config.IncludeDir) > 0 {
 		if isDir(config.IncludeDir) {
-			globPath := filepath.Join(config.IncludeDir, "*.yml")
-			mainLogger.Debug("Glob'ing with path " + globPath)
-			matches, err := filepath.Glob(globPath)
-			if len(matches) == 0 {
-				mainLogger.Fatal("Could not find any cluster settings matching " + globPath)
+			mainLogger.Debug("Glob'ing with " + config.IncludeDir + "**/*.yml")
+			files := []string{}
+			err := filepath.Walk(config.IncludeDir, func(path string, f os.FileInfo, err error) error {
+				mainLogger.Info("Checking for file extension on file: " + path)
+				if filepath.Ext(path) == ".yml" {
+					files = append(files, path)
+				}
+				return nil
+			})
+
+			if len(files) == 0 {
+				mainLogger.Fatal("Could not find any cluster settings matching " + config.IncludeDir + "**/*.yml")
 			}
-			Debugf("found potential module versions:" + strings.Join(matches, " "))
+			Debugf("found potential module versions:" + strings.Join(files, " "))
 			if err != nil {
-				mainLogger.Fatal("Failed to glob cluster settings include_dir with glob path " + globPath + " Error: " + err.Error())
+				mainLogger.Fatal("Failed to glob cluster settings include_dir with glob path " + config.IncludeDir + "**/*.yml Error: " + err.Error())
 			}
-			for _, m := range matches {
-				readClusterSetting(m)
+			for _, f := range files {
+				readClusterSetting(f)
 			}
 		}
 	}
@@ -80,10 +85,10 @@ func main() {
 	mainLogger.Infof("%+v\n", clusterSettings)
 
 	// check for previously create cluster state files and check if I need to restart checker
-	checkCurrentClusterStates()
+	go checkCurrentClusterStates()
 
 	go serve()
-	checkForRebootedSystems()
+	go checkForRebootedSystems()
 
 	select {}
 

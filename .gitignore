@@ -13,4 +13,5 @@
 
 *.swp
 ssl/
+.vscode/
 goahead
