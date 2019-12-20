@@ -26,6 +26,7 @@ var (
 	clusterLoggers        map[string]*logrus.Entry
 	mainLogger            *logrus.Entry
 	unknownLogger         *logrus.Entry
+	checkerLogger         *logrus.Entry
 )
 
 func main() {
@@ -55,6 +56,7 @@ func main() {
 
 	mainLogger = initLogger("goahead")
 	unknownLogger = initLogger("unknown")
+	checkerLogger = initLogger("checker")
 
 	if len(config.IncludeDir) > 0 {
 		if isDir(config.IncludeDir) {
@@ -79,6 +81,7 @@ func main() {
 				readClusterSetting(f)
 			}
 		}
+
 	}
 
 	mainLogger.Info("Found following cluster settings:")
@@ -88,7 +91,6 @@ func main() {
 	go checkCurrentClusterStates()
 
 	go serve()
-	go checkForRebootedSystems()
 
 	select {}
 

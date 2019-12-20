@@ -86,9 +86,9 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 
 	uptime, err := time.ParseDuration(request.Uptime)
 	if err != nil {
-		uptime_error := "Can not convert value " + request.Uptime + " of your uptime to a golang Duration. Valid time units are 300ms, 1.5h or 2h45m."
-		Warnf("" + uptime_error)
-		respondWithError(w, http.StatusBadRequest, rid, uptime_error)
+		uptimeError := "Can not convert value " + request.Uptime + " of your uptime to a golang Duration. Valid time units are 300ms, 1.5h or 2h45m."
+		Warnf("" + uptimeError)
+		respondWithError(w, http.StatusBadRequest, rid, uptimeError)
 		return
 	}
 
@@ -136,6 +136,9 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 
 			clusterLogger.Infof("Received " + string(r.RequestURI) + " request from " + request.Fqdn)
 			if strings.HasPrefix(r.RequestURI, "/v1/inquire/") {
+				// check if there are sleeping checks for this server and start them,
+				// beacause the server only inquired if it should restart
+				// which means that the previous necessary restart did happen.
 				res.Message = "No reason to restart"
 				inquireResult := checkAckFileInquire(request, res, clusterLogger)
 				inquireResult = checkChecksInquire(request, res, clusterLogger)
@@ -145,39 +148,37 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				clusterLogger.Infof("Responding with %+v", res)
 				respondWithJSON(w, http.StatusOK, rid, res)
 				return
-			} else {
-				if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
-					res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime
-					clusterLogger.Info(res.Message)
-					respondWithJSON(w, http.StatusOK, rid, res)
-					return
-				}
+			}
+			if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
+				res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime
+				clusterLogger.Info(res.Message)
+				respondWithJSON(w, http.StatusOK, rid, res)
+				return
+			}
 
-				res.AskagainIn = strconv.Itoa(rand.Intn(30)) + "s"
-				result := checkAckFile(request, res, clusterLogger)
-				if result.FqdnGoAhead {
-					result = checkClusterState(res, result, clusterLogger)
+			res.AskagainIn = strconv.Itoa(rand.Intn(30)) + "s"
+			result := checkAckFile(request, res, clusterLogger)
+			if result.FqdnGoAhead {
+				result = checkClusterState(res, result, clusterLogger)
+			}
+			if result.FqdnGoAhead && result.ClusterGoAhead {
+				res.Message = result.Reason
+				res.Goahead = true
+				triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
+				clusterLogger.Debug("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
+				select {
+				case checkCluster <- clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}:
+				default:
 				}
-				if result.FqdnGoAhead && result.ClusterGoAhead {
-					res.Message = result.Reason
-					res.Goahead = true
-					triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
-					clusterLogger.Debug("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
-					select {
-					case checkCluster <- clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}:
-					default:
-					}
-				} else {
-					res.Message = result.Reason
-				}
+			} else {
+				res.Message = result.Reason
 			}
 			clusterLogger.Infof("Responding with %+v", res)
 			respondWithJSON(w, http.StatusOK, rid, res)
 			return
-		} else {
-			clusterLogger.Debug("Name pattern " + clusterSettings[c].NamePattern + " does not match with fqdn from request " + request.Fqdn)
-			res.Message = "FQDN " + request.Fqdn + " did not match any known cluster"
 		}
+		clusterLogger.Debug("Name pattern " + clusterSettings[c].NamePattern + " does not match with fqdn from request " + request.Fqdn)
+		res.Message = "FQDN " + request.Fqdn + " did not match any known cluster"
 	}
 	unknownLogger.Infof("Responding with %+v", res)
 	res.FoundCluster = "unknown"

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	defaultUrl = "https://127.0.0.1:8443/"
+	defaultURL = "https://127.0.0.1:8443/"
 )
 
 func prepareHTTPClient(t *testing.T) *http.Client {
@@ -55,11 +55,11 @@ func doRequest(req request, uri string, t *testing.T) response {
 	}
 	Debugf("Sending request body: " + string(reqBytes))
 
-	resp, err := client.Post(defaultUrl+uri, "application/json", bytes.NewBuffer(reqBytes))
-	defer resp.Body.Close()
+	resp, err := client.Post(defaultURL+uri, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
-		t.Error("Error while issuing request to " + defaultUrl + " Error: " + err.Error())
+		t.Error("Error while issuing request to " + defaultURL + " Error: " + err.Error())
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

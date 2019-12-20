@@ -36,19 +36,19 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 		clusterLogger.Debug(res.RequestID + " Found ACK file " + file + " Trying to read it")
 		var ackFile response
 		ackFile = readAckFile(file, ackFile, res.FoundCluster, clusterLogger)
-		if compareDurationString(req.Uptime, ackFile.ReportedUptime) == "shorter" {
+		// TODO: add check if this fqdn recieved goahead in cluster state json
+		if compareDurationString(req.Uptime, ackFile.ReportedUptime) == "shorter" || ackFile.Goahead {
 			mutex.Lock()
-			if _, ok := sleepingClusterChecks[res.RequestingFqdn]; ok {
+			if cc, ok := sleepingClusterChecks[res.RequestingFqdn]; ok {
 				// Interrupt a reboot completion check if there is one still sleeping
-				//clusterLogger.Info("Interrupting sleeping reboot completion check for " + request.Fqdn + " inside cluster " + res.FoundCluster)
-				select {
-				case startCheckerChannel <- req:
-				default:
-				}
+				clusterLogger.Info("Interrupting sleeping reboot completion check for " + req.Fqdn + " inside cluster " + res.FoundCluster)
+				delete(sleepingClusterChecks, cc.Fqdn)
+				go startCheckForRebootedSystem(cc, req)
 			}
 			mutex.Unlock()
+		} else {
+			clusterLogger.Info("Reported uptime for FQDN: " + req.Fqdn + " was not shorter! Reported uptime:" + req.Uptime + " last reported uptime in ACK file: " + ackFile.ReportedUptime)
 		}
-		saveAckFile(res, clusterLogger)
 		if strings.HasPrefix(ackFile.Message, "YesInquireToRestart") {
 			clusterLogger.Debug("YesInquireToRestart found for FQDN: " + req.Fqdn + " Reason: " + ackFile.Message)
 			return inquireCheckResult{InquireToRestart: true, Reason: ackFile.Message}
@@ -118,7 +118,7 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 			result.ClusterGoAhead = false
 			return result
 		}
-		cs.CurrentOngoingRestarts += 1
+		cs.CurrentOngoingRestarts++
 		cs.CurrentRestartingServers[res.RequestingFqdn] = struct{}{}
 		cs.LastRestartRequestTimestamp = time.Now()
 	} else {
@@ -145,14 +145,14 @@ func modifyClusterState(cluster string, fqdn string, operation string, clusterLo
 		// server finished -> then --
 		// server append -> then ++
 		if operation == "remove" {
-			cs.CurrentOngoingRestarts -= 1
+			cs.CurrentOngoingRestarts--
 			if cs.CurrentOngoingRestarts < 0 {
 				cs.CurrentOngoingRestarts = 0
 			}
 			delete(cs.CurrentRestartingServers, fqdn)
 			cs.LastSuccessfulRestartTimestamp = time.Now()
 		} else if operation == "add" {
-			cs.CurrentOngoingRestarts += 1
+			cs.CurrentOngoingRestarts++
 			cs.CurrentRestartingServers[fqdn] = struct{}{}
 		} else {
 			clusterLogger.Fatal("Invalid operation verb: " + operation + " for cluster state file: " + clusterFile)
@@ -181,11 +181,12 @@ func checkCurrentClusterStates() {
 					clusterLogger.Info("Trying to restart cluster node checks for clusterFile: " + clusterFile)
 					// restart the successfull reboot checker, otherwise it would block _all_ later restart requests
 					for restartingClusterNode := range cs.CurrentRestartingServers {
+						cc := clusterCheck{clusterSettings[cluster], restartingClusterNode, "checkCurrentClusterStates()", cluster}
+						mutex.Lock()
+						sleepingClusterChecks[restartingClusterNode] = cc
+						mutex.Unlock()
+						checkerLogger.Info("Sleeping for reboot_completion_check_offset: " + cc.Csetting.RebootCompletionCheckOffset.String() + " for FQDN: " + cc.Fqdn)
 						clusterLogger.Info("Restarting cluster checker for " + restartingClusterNode + " inside cluster " + cluster + " check command: " + csetting.RebootCompletionCheck)
-						select {
-						case checkCluster <- clusterCheck{csetting, restartingClusterNode, "restartingClusterCheckAtStartup fqdn: " + restartingClusterNode + " cluster: " + cluster, cluster}:
-						default:
-						}
 					}
 
 				}
