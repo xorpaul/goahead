@@ -37,15 +37,14 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 		var ackFile response
 		ackFile = readAckFile(file, ackFile, res.FoundCluster, clusterLogger)
 		// TODO: add check if this fqdn recieved goahead in cluster state json
-		if compareDurationString(req.Uptime, ackFile.ReportedUptime) == "shorter" {
+		if compareDurationString(req.Uptime, ackFile.ReportedUptime) == "shorter" || ackFile.Goahead {
 			mutex.Lock()
-			if _, ok := sleepingClusterChecks[res.RequestingFqdn]; ok {
+			if cc, ok := sleepingClusterChecks[res.RequestingFqdn]; ok {
 				// Interrupt a reboot completion check if there is one still sleeping
 				clusterLogger.Info("Interrupting sleeping reboot completion check for " + req.Fqdn + " inside cluster " + res.FoundCluster)
-				select {
-				case startCheckerChannel <- req:
-				default:
-				}
+				delete(sleepingClusterChecks, cc.Fqdn)
+				go startCheckForRebootedSystem(cc, req)
+
 			}
 			mutex.Unlock()
 		} else {

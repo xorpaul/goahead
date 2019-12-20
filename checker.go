@@ -13,20 +13,6 @@ type clusterCheck struct {
 	Cluster   string
 }
 
-func checkForRebootedSystems() {
-	checkerLogger.Info("Listening to starCheckerChannel")
-
-	req := <-startCheckerChannel
-	checkerLogger.Info("Received inquire request from FQDN " + req.Fqdn)
-	if cc, ok := sleepingClusterChecks[req.Fqdn]; ok {
-		checkerLogger.Info("Received inquire request from FQDN " + cc.Fqdn + " Interrupting reboot_completion_check_offset sleep for cluster " + cc.Cluster)
-		mutex.Lock()
-		delete(sleepingClusterChecks, cc.Fqdn)
-		mutex.Unlock()
-		go startCheckForRebootedSystem(cc, req)
-	}
-}
-
 func startCheckForRebootedSystem(cc clusterCheck, req request) {
 	//checkerLogger.Warn("Recieved: ", cc)
 
