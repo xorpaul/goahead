@@ -50,7 +50,7 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 			clusterLogger.Info("Reported uptime for FQDN: " + req.Fqdn + " was not shorter! Reported uptime:" + req.Uptime + " last reported uptime in ACK file: " + ackFile.ReportedUptime)
 		}
 		if strings.HasPrefix(ackFile.Message, "YesInquireToRestart") {
-			clusterLogger.Debug("YesInquireToRestart found for FQDN: " + req.Fqdn + " Reason: " + ackFile.Message)
+			clusterLogger.Info("YesInquireToRestart found for FQDN: " + req.Fqdn + " Reason: " + ackFile.Message)
 			return inquireCheckResult{InquireToRestart: true, Reason: ackFile.Message}
 		}
 	} else {
