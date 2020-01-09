@@ -78,17 +78,19 @@ func checkAckFile(req request, res response, clusterLogger *logrus.Entry) reboot
 	folder := filepath.Join(config.SaveStateDir, res.FoundCluster)
 	file := filepath.Join(folder, req.Fqdn+".json")
 	clusterLogger.Debug("Checking for ACK file " + file)
-	if fileExists(file) && len(req.RequestID) > 1 {
+	if fileExists(file) {
 		clusterLogger.Debug(res.RequestID + " Found ACK file " + file + " Trying to read it")
 		var ackFile response
 		ackFile = readAckFile(file, ackFile, res.FoundCluster, clusterLogger)
-		if req.RequestID == ackFile.RequestID {
-			clusterLogger.Debug(req.RequestID + " Found matching request_id in ACK file " + file + " and in request")
-			return rebootCheckResult{FqdnGoAhead: true, ClusterGoAhead: false, Reason: ""}
+		if len(req.RequestID) > 1 {
+			if req.RequestID == ackFile.RequestID {
+				clusterLogger.Debug(req.RequestID + " Found matching request_id in ACK file " + file + " and in request")
+				return rebootCheckResult{FqdnGoAhead: true, ClusterGoAhead: false, Reason: ""}
+			}
+			return rebootCheckResult{FqdnGoAhead: false, ClusterGoAhead: false, Reason: "Found mismatching request_id in request: " + req.RequestID + " and found on middle-ware: " + ackFile.RequestID}
 		}
-		return rebootCheckResult{FqdnGoAhead: false, ClusterGoAhead: false, Reason: "Found mismatching request_id in request: " + req.RequestID + " and found on middle-ware: " + ackFile.RequestID}
-	}
-	if len(req.RequestID) < 1 {
+		res = ackFile
+		res.RequestID = ""
 		res.Message = "Creating new request_id, because none was received"
 		saveAckFile(res, clusterLogger)
 	}
