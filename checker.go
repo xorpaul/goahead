@@ -56,6 +56,7 @@ func startCheckForRebootedSystem(cc clusterCheck, req request) {
 	res.Timestamp = time.Now()
 	res.RequestingFqdn = cc.Fqdn
 	res.ReportedUptime = req.Uptime
+	res.FoundCluster = cc.Cluster
 	res.Message = "fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster + " at " + res.Timestamp.String()
 	saveAckFile(res, clusterLogger)
 }
