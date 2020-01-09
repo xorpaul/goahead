@@ -169,8 +169,8 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				mutex.Lock()
 				if _, ok := sleepingClusterChecks[res.RequestingFqdn]; !ok {
 					sleepingClusterChecks[request.Fqdn] = clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}
-					mutex.Unlock()
 				}
+				mutex.Unlock()
 			} else {
 				res.Message = result.Reason
 			}
