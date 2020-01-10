@@ -42,7 +42,7 @@ func main() {
 	version := *versionFlag
 
 	if version {
-		fmt.Println("goahead version 0.0.4 Build time:", buildtime, "UTC")
+		fmt.Println("goahead version 0.0.5 Build time:", buildtime, "UTC")
 		os.Exit(0)
 	}
 
