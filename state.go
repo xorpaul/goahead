@@ -89,8 +89,7 @@ func checkAckFile(req request, res response, clusterLogger *logrus.Entry) reboot
 			}
 			return rebootCheckResult{FqdnGoAhead: false, ClusterGoAhead: false, Reason: "Found mismatching request_id in request: " + req.RequestID + " and found on middle-ware: " + ackFile.RequestID}
 		}
-		res = ackFile
-		res.RequestID = ""
+		res.Goahead = ackFile.Goahead
 		res.Message = "Creating new request_id, because none was received"
 		saveAckFile(res, clusterLogger)
 	}
