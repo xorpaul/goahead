@@ -24,7 +24,7 @@ func saveAckFile(res response, clusterLogger *logrus.Entry) {
 	folder := filepath.Join(config.SaveStateDir, res.FoundCluster)
 	checkDirAndCreate(folder, "SaveAckFile cluster directory")
 	file := filepath.Join(folder, res.RequestingFqdn+".json")
-	clusterLogger.Debug("Trying to save fqdn ACK file " + file)
+	clusterLogger.Infof("Trying to save fqdn ACK file " + file)
 	writeStructJSONFile(file, res)
 }
 
@@ -48,6 +48,9 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 			mutex.Unlock()
 		} else {
 			clusterLogger.Info("Reported uptime for FQDN: " + req.Fqdn + " was not shorter! Reported uptime:" + req.Uptime + " last reported uptime in ACK file: " + ackFile.ReportedUptime)
+			updatedRes := ackFile
+			updatedRes.ReportedUptime = req.Uptime
+			saveAckFile(updatedRes, clusterLogger)
 		}
 		if strings.HasPrefix(ackFile.Message, "YesInquireToRestart") {
 			clusterLogger.Info("YesInquireToRestart found for FQDN: " + req.Fqdn + " Reason: " + ackFile.Message)
@@ -91,8 +94,8 @@ func checkAckFile(req request, res response, clusterLogger *logrus.Entry) reboot
 		}
 		res.Goahead = ackFile.Goahead
 		res.Message = "Creating new request_id, because none was received"
-		saveAckFile(res, clusterLogger)
 	}
+	saveAckFile(res, clusterLogger)
 	return rebootCheckResult{FqdnGoAhead: false, ClusterGoAhead: false, Reason: "No previous request file found for fqdn: " + req.Fqdn}
 }
 
@@ -112,7 +115,7 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 		cs = readClusterStateFile(clusterFile, res.FoundCluster, clusterLogger)
 		if _, ok := cs.CurrentRestartingServers[res.RequestingFqdn]; ok {
 			result.Reason = "You should already be restarting!"
-			result.ClusterGoAhead = false
+			result.ClusterGoAhead = true
 			return result
 		} else if cs.CurrentOngoingRestarts >= clusterSettings[res.FoundCluster].AllowedParallelRestarts {
 			result.Reason = "Denied restart request as the current_ongoing_restarts of cluster " + res.FoundCluster + " is larger than the allowed_parallel_restarts: " + strconv.Itoa(cs.CurrentOngoingRestarts) + " >= " + strconv.Itoa(clusterSettings[res.FoundCluster].AllowedParallelRestarts) + " Currently restarting hosts: " + strings.Join(keysString(cs.CurrentRestartingServers), ",")

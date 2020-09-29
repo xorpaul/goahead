@@ -137,17 +137,23 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 			clusterLogger.Infof("Received " + string(r.RequestURI) + " request from " + request.Fqdn)
 			if strings.HasPrefix(r.RequestURI, "/v1/inquire/") {
 				// check if there are sleeping checks for this server and start them,
-				// beacause the server only inquired if it should restart
+				// because the server only inquired if it should restart
 				// which means that the previous necessary restart did happen.
 				res.Message = "No reason to restart"
 				inquireResult := checkAckFileInquire(request, res, clusterLogger)
-				inquireResult = checkChecksInquire(request, res, clusterLogger)
+
+				clusterLogger.Infof("inquireResult from checkAckFileInquire %+v", inquireResult)
+				if !inquireResult.InquireToRestart {
+					inquireResult = checkChecksInquire(request, res, clusterLogger)
+					clusterLogger.Infof("inquireResult from checkChecksInquire %+v", inquireResult)
+				}
 				if inquireResult.InquireToRestart {
 					res.Message = inquireResult.Reason
+				} else {
+					clusterLogger.Infof("Responding to %s with %+v", r.RequestURI, res)
+					respondWithJSON(w, http.StatusOK, rid, res)
+					return
 				}
-				clusterLogger.Infof("Responding with %+v", res)
-				respondWithJSON(w, http.StatusOK, rid, res)
-				return
 			}
 			if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
 				res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime

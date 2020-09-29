@@ -33,7 +33,7 @@ func startCheckForRebootedSystem(cc clusterCheck, req request) {
 
 		if er.returnCode == 0 {
 			successfulChecks++
-			checkerLogger.Info("Increasing successful check counter to " + strconv.Itoa(successfulChecks) + " for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
+			checkerLogger.Info("Increasing successful check counter to " + strconv.Itoa(successfulChecks) + " of " + strconv.Itoa(cc.Csetting.RebootCompletionCheckConsecutiveSuccesses) + " for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
 			if successfulChecks >= cc.Csetting.RebootCompletionCheckConsecutiveSuccesses {
 				break
 			}
