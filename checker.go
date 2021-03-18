@@ -36,9 +36,7 @@ func startCheckForRebootedSystem(cc clusterCheck, req request) {
 		time.Sleep(cc.Csetting.RebootCompletionCheckInterval)
 	}
 	checkerLogger.Info("fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster)
-	mutex.Lock()
 	clusterLogger := clusterLoggers[cc.Cluster]
-	mutex.Unlock()
 	clusterLogger.Info("fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster)
 	triggerRebootCompletionActions(cc.Fqdn, cc.Cluster, req.Uptime, clusterLogger)
 	//deleteAckFile(cc.Fqdn, cc.Cluster)
