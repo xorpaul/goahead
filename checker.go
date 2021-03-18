@@ -13,14 +13,14 @@ type clusterCheck struct {
 	Cluster   string
 }
 
-func startCheckForRebootedSystem(cc clusterCheck, req request) {
+func startCheckForRebootedSystem(cc clusterCheck, req request, cs clusterSetting) {
 	checkerLogger.Info("Starting check for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
 	successfulChecks := 0
 	for {
 		command := strings.Replace(cc.Csetting.RebootCompletionCheck, "{:%fqdn%:}", cc.Fqdn, -1)
 		command = strings.Replace(command, "{:%hostname%:}", cc.Fqdn, -1)
 		command = strings.Replace(command, "{:%cluster%:}", cc.Fqdn, -1)
-		er := executeCommand(command, 5, true, checkerLogger)
+		er := executeCommand(command, 5, !cs.RaiseErrors, checkerLogger)
 		checkerLogger.Info("Check result of "+command+" is ", er.returnCode)
 
 		if er.returnCode == 0 {

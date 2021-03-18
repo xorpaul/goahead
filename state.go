@@ -28,7 +28,7 @@ func saveAckFile(res response, clusterLogger *logrus.Entry) {
 	writeStructJSONFile(file, res)
 }
 
-func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry) inquireCheckResult {
+func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry, cs clusterSetting) inquireCheckResult {
 	folder := filepath.Join(config.SaveStateDir, res.FoundCluster)
 	file := filepath.Join(folder, req.Fqdn+".json")
 	clusterLogger.Debug(res.RequestID + " Checking for ACK file " + file)
@@ -43,7 +43,7 @@ func checkAckFileInquire(req request, res response, clusterLogger *logrus.Entry)
 				// Interrupt a reboot completion check if there is one still sleeping
 				clusterLogger.Info("Interrupting sleeping reboot completion check for " + req.Fqdn + " inside cluster " + res.FoundCluster)
 				delete(sleepingClusterChecks, cc.Fqdn)
-				go startCheckForRebootedSystem(cc, req)
+				go startCheckForRebootedSystem(cc, req, cs)
 			}
 			mutex.Unlock()
 		} else {
@@ -68,7 +68,7 @@ func checkChecksInquire(req request, res response, clusterLogger *logrus.Entry) 
 		command := strings.Replace(check, "{:%fqdn%:}", req.Fqdn, -1)
 		command = strings.Replace(command, "{:%cluster%:}", res.FoundCluster, -1)
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(req.Fqdn, ".", 2)[0], -1)
-		er := executeCommand(command, 5, true, clusterLogger)
+		er := executeCommand(command, 5, clusterSettings[res.FoundCluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("goahead check result of "+command+" is ", er.returnCode)
 		if er.returnCode == clusterSettings[res.FoundCluster].RebootGoaheadChecksExitCodeForReboot {
 			return inquireCheckResult{InquireToRestart: true, Reason: "YesInquireToRestart: goahead check result of " + command + " is " + strconv.Itoa(er.returnCode)}
