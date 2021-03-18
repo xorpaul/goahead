@@ -14,14 +14,6 @@ type clusterCheck struct {
 }
 
 func startCheckForRebootedSystem(cc clusterCheck, req request) {
-	//checkerLogger.Warn("Recieved: ", cc)
-
-	//case <-time.After(cc.Csetting.RebootCompletionCheckOffset):
-	//	checkerLogger.Info("Waking up check from time.After sleep for " + cc.Csetting.RebootCompletionCheckOffset.String())
-	//	// TODO do panic stuff
-	//	break//
-	//}
-
 	checkerLogger.Info("Starting check for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
 	successfulChecks := 0
 	for {
