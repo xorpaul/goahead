@@ -17,3 +17,6 @@ ssl/
 .vscode/
 goahead
 .vscode/
+
+#OSC home directory
+home:*/**
