@@ -1,6 +1,6 @@
 module github.com/jlalvarez-arsys/goahead
 
-go 1.21.8
+go 1.19
 
 require (
 	github.com/fatih/color v1.16.0
