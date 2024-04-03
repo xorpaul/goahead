@@ -12,7 +12,7 @@ Summary:        Simple service that allows or denies server / OS restarts
 Url:            https://github.com/jlalvarez-arsys/goahead
 Source0:         goahead_client-%{version}.tar.gz
 Source1:         vendor.tar.gz
-BuildRequires:  (go or go1.19)
+BuildRequires:  (go or go1.19 or golang or golang-1.19)
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
