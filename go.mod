@@ -1,4 +1,4 @@
-module github.com/jlalvarez-arsys/goahead
+module github.com/xorpaul/goahead
 
 go 1.19
 
