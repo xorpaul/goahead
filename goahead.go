@@ -32,7 +32,7 @@ var (
 func main() {
 
 	var (
-		configFileFlag = flag.String("config", "./config.yml", "which config file to use")
+		configFileFlag = flag.String("config", "./config.yml", "which config file to use, defaults to ./config.yml")
 		versionFlag    = flag.Bool("version", false, "show build time and version number")
 	)
 	flag.BoolVar(&debug, "debug", false, "log debug output, defaults to false")
