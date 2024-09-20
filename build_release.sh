@@ -5,20 +5,25 @@ if [ $# -ne 2 ]; then
   echo "need the version number and release comment as argument"
   echo "e.g. ${0} 0.4.5 'fix local modules and modules with install_path purging bug #80 #82'"
   echo "Aborting..."
-	exit 1
+  exit 1
 fi
 
-time go test -v
+git pull
 
-#if [ $? -ne 0 ]; then 
-#  echo "Tests unsuccessfull"
-#  echo "Aborting..."
-#	exit 1
-#fi
+#time go test -v
 
-sed -i "s/goahead version [^ ]*/goahead version ${1}/" goahead.go
-git add goahead.go
-git commit -m "bump version to v${1}"
+if [ $? -ne 0 ]; then
+  echo "Tests unsuccessfull"
+  echo "Aborting..."
+  exit 1
+fi
+
+# try to get the project name from the current working directory
+projectname=${PWD##*/}
+
+#sed -i "s/${projectname} version [^ ]*/${projectname} version ${1}/" ${projectname}.go
+#git add ${projectname}.go
+#git commit -m "bump version to v${1}"
 
 echo "creating git tag v${1}"
 git tag v${1}
@@ -26,16 +31,30 @@ echo "pushing git tag v${1}"
 git push -f --tags
 git push
 
-echo "creating github release v${1}"
-github-release release  --user xorpaul     --repo goahead     --tag v${1}     --name "v${1}"     --description "${2}"
+test -z ${GITHUB_TOKEN} || echo "creating github release v${1}"
+test -z ${GITHUB_TOKEN} && echo "skipping github-release as GITHUB_TOKEN is not set" || github-release release --user xorpaul --repo ${projectname} --tag v${1} --name "v${1}" --description "${2}"
 
-echo "building and uploading goahead-darwin-amd64"
-BUILDTIME=$(date -u '+%Y-%m-%d_%H:%M:%S') && env GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w -X main.buildtime=$BUILDTIME" && date
-zip goahead-darwin-amd64.zip goahead
-github-release upload     --user xorpaul     --repo goahead     --tag v${1}     --name "goahead-darwin-amd64.zip" --file goahead-darwin-amd64.zip
+export CGO_ENABLED=0
+export BUILDTIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+export BUILDVERSION=$(git describe --tags)
 
-echo "building and uploading goahead-linux-amd64"
-BUILDTIME=$(date -u '+%Y-%m-%d_%H:%M:%S') && go build -race -ldflags "-s -w -X main.buildtime=$BUILDTIME" && date && ./goahead
-zip goahead-linux-amd64.zip goahead
-github-release upload     --user xorpaul     --repo goahead     --tag v${1}     --name "goahead-linux-amd64.zip" --file goahead-linux-amd64.zip
+### macOS Intel
 
+echo "building and uploading ${projectname}-darwin-amd64"
+env GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.buildtime=${BUILDTIME} -X main.buildversion=${BUILDVERSION}" && date
+zip ${projectname}-darwin-amd64.zip ${projectname}
+test -z ${GITHUB_TOKEN} && echo "skipping github-release as GITHUB_TOKEN is not set" || github-release upload --user xorpaul --repo ${projectname} --tag v${1} --name "${projectname}-darwin-amd64.zip" --file ${projectname}-darwin-amd64.zip
+
+### macOS ARM
+
+echo "building and uploading ${projectname}-darwin-arm64"
+env GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.buildtime=${BUILDTIME} -X main.buildversion=${BUILDVERSION}" && date
+zip ${projectname}-darwin-arm64.zip ${projectname}
+test -z ${GITHUB_TOKEN} && echo "skipping github-release as GITHUB_TOKEN is not set" || github-release upload --user xorpaul --repo ${projectname} --tag v${1} --name "${projectname}-darwin-arm64.zip" --file ${projectname}-darwin-arm64.zip
+
+### LINUX
+
+echo "building and uploading ${projectname}-linux-amd64"
+go build -ldflags "-X main.buildtime=${BUILDTIME} -X main.buildversion=${BUILDVERSION}" && date && env ${projectname}_cachedir=/tmp/${projectname} ./${projectname} -config test.yaml -branch benchmark 2>&1
+zip ${projectname}-linux-amd64.zip ${projectname}
+test -z ${GITHUB_TOKEN} && echo "skipping github-release as GITHUB_TOKEN is not set" || github-release upload --user xorpaul --repo ${projectname} --tag v${1} --name "${projectname}-linux-amd64.zip" --file ${projectname}-linux-amd64.zip
