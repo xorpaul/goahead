@@ -71,6 +71,7 @@ func checkChecksInquire(req request, res response, clusterLogger *logrus.Entry) 
 		er := executeCommand(command, 5, clusterSettings[res.FoundCluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("goahead check result of "+command+" is ", er.returnCode)
 		if er.returnCode == clusterSettings[res.FoundCluster].RebootGoaheadChecksExitCodeForReboot {
+			clusterLogger.Info("YesInquireToRestart: goahead check result of " + command + " is " + strconv.Itoa(er.returnCode))
 			return inquireCheckResult{InquireToRestart: true, Reason: "YesInquireToRestart: goahead check result of " + command + " is " + strconv.Itoa(er.returnCode)}
 		}
 	}
@@ -132,8 +133,15 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 		cs.CurrentRestartingServers[res.RequestingFqdn] = struct{}{}
 	}
 	clusterLogger.Debug("Trying to save cluster ACK file " + clusterFile)
-	writeStructJSONFile(clusterFile, cs)
-	result.ClusterGoAhead = true
+	err := writeStructJSONFile(clusterFile, cs)
+	if err != nil {
+		result.Reason = "Could not save cluster state file: " + clusterFile + " " + err.Error()
+		result.ClusterGoAhead = false
+		clusterLogger.Error("Could not save cluster state file: " + clusterFile + " " + err.Error())
+	} else {
+		result.ClusterGoAhead = true
+		clusterLogger.Debug("Saved cluster state file: " + clusterFile)
+	}
 	return result
 
 }

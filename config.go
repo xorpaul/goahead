@@ -1,7 +1,8 @@
 package main
 
 import (
-	"io/ioutil"
+	"fmt"
+	"os"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
@@ -23,7 +24,8 @@ type configSettings struct {
 
 // readConfigfile creates the configSettings struct from the config file
 func readConfigfile(configFile string) configSettings {
-	data, err := ioutil.ReadFile(configFile)
+	fmt.Println("Trying to read config file: " + configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		Fatalf("readConfigfile(): There was an error parsing the config file " + configFile + ": " + err.Error())
 	}

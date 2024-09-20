@@ -3,8 +3,8 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -29,7 +29,7 @@ func serve() {
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 
 		// Load CA cert
-		caCert, err := ioutil.ReadFile(config.ClientCertCaFile)
+		caCert, err := os.ReadFile(config.ClientCertCaFile)
 		if err != nil {
 			mainLogger.Fatal("Error while trying to read ssl_client_cert_ca_file " + config.ClientCertCaFile + " " + err.Error())
 		}

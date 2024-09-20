@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -39,7 +39,7 @@ type clusterState struct {
 // readclusterSettingsFile creates the ConfigSettings struct from the config file
 func readClusterSetting(clusterSettingsFile string) {
 	mainLogger.Debug("Trying to read cluster settings config file: " + clusterSettingsFile)
-	data, err := ioutil.ReadFile(clusterSettingsFile)
+	data, err := os.ReadFile(clusterSettingsFile)
 	if err != nil {
 		mainLogger.Fatal("readclusterSettingsFile(): There was an error parsing the config file " + clusterSettingsFile + ": " + err.Error())
 	}

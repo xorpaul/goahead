@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,7 +27,7 @@ func prepareHTTPClient(t *testing.T) *http.Client {
 
 	if len(config.ClientCertCaFile) > 0 {
 		// Read in the cert file
-		certs, err := ioutil.ReadFile(config.ClientCertCaFile)
+		certs, err := os.ReadFile(config.ClientCertCaFile)
 		if err != nil {
 			t.Error("Failed to append " + config.ClientCertCaFile + " to RootCAs Error: " + err.Error())
 		}
@@ -61,7 +60,7 @@ func doRequest(req request, uri string, t *testing.T) response {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := os.ReadAll(resp.Body)
 	if err != nil {
 		t.Error("Error while reading response body: " + err.Error())
 	}
@@ -137,7 +136,7 @@ func TestGoahead(t *testing.T) {
 		"Executing ./tests/goahead_action.sh foobar-server-aa07.domain.tld foobar-server",
 	}
 	foobarServerLogfile := "/tmp/goahead/foobar-server.log"
-	content, _ := ioutil.ReadFile(foobarServerLogfile)
+	content, _ := os.ReadFile(foobarServerLogfile)
 
 	for _, expectedLine := range expectedLines {
 		if !strings.Contains(string(content), expectedLine) {
@@ -178,7 +177,7 @@ func TestGoahead(t *testing.T) {
 		"Received inquire request from FQDN foobar-server-aa07.domain.tld Interrupting reboot_completion_check_offset sleep!",
 	}
 	checkerLogfile := "/tmp/goahead/checker.log"
-	contentChecker, _ := ioutil.ReadFile(checkerLogfile)
+	contentChecker, _ := os.ReadFile(checkerLogfile)
 	for _, expectedLine := range expectedLines {
 		if strings.Contains(string(contentChecker), expectedLine) {
 			t.Errorf("Did find line '" + expectedLine + "' in goahead checker logfile " + checkerLogfile + ", but it should not be here, because the reported_uptime wasn't lower than the previuously received uptime. Indicating that no reboot happened!")
@@ -190,7 +189,7 @@ func TestGoahead(t *testing.T) {
 	expectedLines = []string{
 		"Received inquire request from FQDN foobar-server-aa07.domain.tld Interrupting reboot_completion_check_offset sleep!",
 	}
-	contentChecker, _ = ioutil.ReadFile(checkerLogfile)
+	contentChecker, _ = os.ReadFile(checkerLogfile)
 	for _, expectedLine := range expectedLines {
 		if !strings.Contains(string(contentChecker), expectedLine) {
 			t.Errorf("Did not find expected line '" + expectedLine + "' in goahead checker logfile " + checkerLogfile)
