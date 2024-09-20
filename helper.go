@@ -169,11 +169,7 @@ func executeCommand(command string, timeout int, allowFail bool, logger *log.Ent
 	if msg, ok := err.(*exec.ExitError); ok { // there is error code
 		er.returnCode = msg.Sys().(syscall.WaitStatus).ExitStatus()
 	}
-	if allowFail && err != nil {
-		logger.Debug("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
-	} else {
-		logger.Debug("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
-	}
+	logger.Debug("Executing " + command + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
 	if err != nil {
 		if !allowFail {
 			logger.Warn("executeCommand(): command failed: " + command + " " + err.Error() + "\nOutput: " + string(out))
