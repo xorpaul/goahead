@@ -140,7 +140,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				// because the server only inquired if it should restart
 				// which means that the previous necessary restart did happen.
 				res.Message = "No reason to restart"
-				inquireResult := checkAckFileInquire(request, res, clusterLogger)
+				inquireResult := checkAckFileInquire(request, res, clusterLogger, clusterSettings[c])
 
 				clusterLogger.Infof("inquireResult from checkAckFileInquire %+v", inquireResult)
 				if !inquireResult.InquireToRestart {

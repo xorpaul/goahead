@@ -16,9 +16,12 @@ foobar-server:
   reboot_completion_actions:
     - ./tests/reboot_successful_action.sh {:%fqdn%:} {:%cluster%:}
   reboot_completion_panic_threshold: 3h
-  reboot_completion_panic_action: 
+  reboot_completion_panic_action:
     mail:
         - xorpaul@gmail.com
     scripts:
         - /tmp/{:%fqdn%:}_panic
   enabled: true
+  # Set raise_errors to true to cause errors to propagate and stop
+  # the processing of the cluster.
+  raise_errors: false
