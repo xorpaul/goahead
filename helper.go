@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -242,7 +241,7 @@ func writeStructJSONFile(file string, v interface{}) {
 
 func readClusterStateFile(file string, cluster string, clusterLogger *log.Entry) clusterState {
 	clusterLogger.Debug("Trying to read json file: " + file)
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		clusterLogger.Warn("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
 	}
@@ -257,7 +256,7 @@ func readClusterStateFile(file string, cluster string, clusterLogger *log.Entry)
 
 func readAckFile(file string, res response, cluster string, clusterLogger *log.Entry) response {
 	clusterLogger.Debug("Trying to read json file: " + file)
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		clusterLogger.Warn("readStructJSONFile(): There was an error parsing the json file " + file + ": " + err.Error())
 	}
