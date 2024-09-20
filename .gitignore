@@ -17,3 +17,14 @@ ssl/
 .vscode/
 goahead
 .vscode/
+
+#Temporary Go stuff
+vendor/**
+go.sum
+
+#OSC home directory
+home:*/**
+
+#Archives and others
+*.gz
+*.xz

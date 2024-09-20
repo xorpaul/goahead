@@ -25,6 +25,7 @@ type clusterSetting struct {
 	RebootGoaheadActions                      []string      `yaml:"reboot_goahead_actions"`
 	RebootGoaheadChecks                       []string      `yaml:"reboot_goahead_checks"`
 	RebootGoaheadChecksExitCodeForReboot      int           `yaml:"reboot_goahead_checks_exit_code_for_reboot"`
+	RaiseErrors                               bool          `yaml:"raise_errors"`
 }
 
 // clusterState contains information over the cluster (how many nodes are currently restarting, when was the last cluster node restart, how many of the cluster nodes are up-to-date)
@@ -53,9 +54,7 @@ func readClusterSetting(clusterSettingsFile string) {
 		mainLogger.Debug("Adding cluster settings " + clusterName)
 		clusterSettings[clusterName] = clusterSetting
 		clusterLogger := initLogger(clusterName)
-		mutex.Lock()
 		clusterLoggers[clusterName] = clusterLogger
-		mutex.Unlock()
 		clusterLogger.Infof("Using cluster settings: %+v", clusterSetting)
 	}
 
@@ -69,7 +68,7 @@ func triggerRebootGoaheadActions(fqdn string, cluster string, uptime string, clu
 		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
 		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
-		er := executeCommand(command, 5, true, clusterLogger)
+		er := executeCommand(command, 5, !clusterSettings[cluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("goahead action result of "+command+" is ", er.returnCode)
 	}
 }
@@ -82,7 +81,7 @@ func triggerRebootCompletionActions(fqdn string, cluster string, uptime string, 
 		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
 		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
-		er := executeCommand(command, 5, true, clusterLogger)
+		er := executeCommand(command, 5, !clusterSettings[cluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("reboot completion action result of "+command+" is ", er.returnCode)
 	}
 }

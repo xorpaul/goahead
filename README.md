@@ -3,6 +3,13 @@ Simple service that allows or denies server / OS restarts.
 
 Client can be found here: https://github.com/xorpaul/goahead_client
 
+## Building
+
+```sh
+go mod tidy
+go build
+```
+
 ### workflow
 
 #### Client inquires or requests restart
