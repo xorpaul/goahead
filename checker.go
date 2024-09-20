@@ -13,22 +13,14 @@ type clusterCheck struct {
 	Cluster   string
 }
 
-func startCheckForRebootedSystem(cc clusterCheck, req request) {
-	//checkerLogger.Warn("Recieved: ", cc)
-
-	//case <-time.After(cc.Csetting.RebootCompletionCheckOffset):
-	//	checkerLogger.Info("Waking up check from time.After sleep for " + cc.Csetting.RebootCompletionCheckOffset.String())
-	//	// TODO do panic stuff
-	//	break//
-	//}
-
+func startCheckForRebootedSystem(cc clusterCheck, req request, cs clusterSetting) {
 	checkerLogger.Info("Starting check for rebooted system in cluster " + cc.Cluster + " with fqdn: " + cc.Fqdn)
 	successfulChecks := 0
 	for {
 		command := strings.Replace(cc.Csetting.RebootCompletionCheck, "{:%fqdn%:}", cc.Fqdn, -1)
 		command = strings.Replace(command, "{:%hostname%:}", cc.Fqdn, -1)
 		command = strings.Replace(command, "{:%cluster%:}", cc.Fqdn, -1)
-		er := executeCommand(command, 5, true, checkerLogger)
+		er := executeCommand(command, 5, !cs.RaiseErrors, checkerLogger)
 		checkerLogger.Info("Check result of "+command+" is ", er.returnCode)
 
 		if er.returnCode == 0 {
@@ -44,9 +36,7 @@ func startCheckForRebootedSystem(cc clusterCheck, req request) {
 		time.Sleep(cc.Csetting.RebootCompletionCheckInterval)
 	}
 	checkerLogger.Info("fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster)
-	mutex.Lock()
 	clusterLogger := clusterLoggers[cc.Cluster]
-	mutex.Unlock()
 	clusterLogger.Info("fqdn: " + cc.Fqdn + " seems to have successfully rebooted in cluster " + cc.Cluster)
 	triggerRebootCompletionActions(cc.Fqdn, cc.Cluster, req.Uptime, clusterLogger)
 	//deleteAckFile(cc.Fqdn, cc.Cluster)
