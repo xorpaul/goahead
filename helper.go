@@ -226,17 +226,20 @@ func randSeq() string {
 	return string(b)
 }
 
-func writeStructJSONFile(file string, v interface{}) {
+func writeStructJSONFile(file string, v interface{}) error {
 	f, err := os.Create(file)
 	if err != nil {
 		Warnf("Could not write JSON file " + file + " " + err.Error())
+		return err
 	}
 	defer f.Close()
 	json, err := json.Marshal(v)
 	if err != nil {
 		Warnf("Could not encode JSON file " + file + " " + err.Error())
+		return err
 	}
 	f.Write(json)
+	return nil
 }
 
 func readClusterStateFile(file string, cluster string, clusterLogger *log.Entry) clusterState {
