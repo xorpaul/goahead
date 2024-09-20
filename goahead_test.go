@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func doRequest(req request, uri string, t *testing.T) response {
 	}
 	defer resp.Body.Close()
 
-	body, err := os.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Error("Error while reading response body: " + err.Error())
 	}
