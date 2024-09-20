@@ -71,6 +71,7 @@ func checkChecksInquire(req request, res response, clusterLogger *logrus.Entry) 
 		er := executeCommand(command, 5, clusterSettings[res.FoundCluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("goahead check result of "+command+" is ", er.returnCode)
 		if er.returnCode == clusterSettings[res.FoundCluster].RebootGoaheadChecksExitCodeForReboot {
+			clusterLogger.Info("YesInquireToRestart: goahead check result of " + command + " is " + strconv.Itoa(er.returnCode))
 			return inquireCheckResult{InquireToRestart: true, Reason: "YesInquireToRestart: goahead check result of " + command + " is " + strconv.Itoa(er.returnCode)}
 		}
 	}

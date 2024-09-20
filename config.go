@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -23,6 +24,7 @@ type configSettings struct {
 
 // readConfigfile creates the configSettings struct from the config file
 func readConfigfile(configFile string) configSettings {
+	fmt.Println("Trying to read config file: " + configFile)
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		Fatalf("readConfigfile(): There was an error parsing the config file " + configFile + ": " + err.Error())
