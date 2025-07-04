@@ -10,9 +10,10 @@ import (
 )
 
 type rebootCheckResult struct {
-	FqdnGoAhead    bool
-	ClusterGoAhead bool
-	Reason         string
+	RebootPanicThresholdEnabled bool
+	FqdnGoAhead                 bool
+	ClusterGoAhead              bool
+	Reason                      string
 }
 
 type inquireCheckResult struct {
@@ -118,6 +119,23 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 			result.Reason = "You should already be restarting!"
 			result.ClusterGoAhead = true
 			return result
+		} else if len(cs.CurrentRestartingServers) > 0 &&
+			// we do not want to run script on every request, we will wait for next threshold (act like interval)
+			time.Since(cs.LastRestartPanicTimestamp).Seconds() > clusterSettings[res.FoundCluster].RebootCompletionPanicThreshold.Seconds() &&
+			// we have meet threshold
+			time.Since(cs.LastRestartRequestTimestamp).Seconds() > clusterSettings[res.FoundCluster].RebootCompletionPanicThreshold.Seconds() {
+			result.Reason = "Reboot completion panic threshold met for cluster " + res.FoundCluster + " because previous host " + strings.Join(keysString(cs.CurrentRestartingServers), ",") + " still offline!"
+			result.ClusterGoAhead = false
+			result.RebootPanicThresholdEnabled = true
+			cs.LastRestartPanicTimestamp = time.Now()
+			clusterLogger.Debug("Trying to save cluster ACK file on restart panic " + clusterFile)
+			if err := writeStructJSONFile(clusterFile, cs); err != nil {
+				result.Reason = "Could not save cluster state file: " + clusterFile + " " + err.Error()
+				clusterLogger.Error("Could not save cluster state file: " + clusterFile + " " + err.Error())
+			} else {
+				clusterLogger.Debug("Saved cluster state file: " + clusterFile)
+			}
+			return result
 		} else if cs.CurrentOngoingRestarts >= clusterSettings[res.FoundCluster].AllowedParallelRestarts {
 			result.Reason = "Denied restart request as the current_ongoing_restarts of cluster " + res.FoundCluster + " is larger than the allowed_parallel_restarts: " + strconv.Itoa(cs.CurrentOngoingRestarts) + " >= " + strconv.Itoa(clusterSettings[res.FoundCluster].AllowedParallelRestarts) + " Currently restarting hosts: " + strings.Join(keysString(cs.CurrentRestartingServers), ",")
 			result.ClusterGoAhead = false
@@ -125,6 +143,7 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 		}
 		cs.CurrentOngoingRestarts++
 		cs.CurrentRestartingServers[res.RequestingFqdn] = struct{}{}
+		cs.LastRestartPanicTimestamp = time.Time{}
 		cs.LastRestartRequestTimestamp = time.Now()
 	} else {
 		clusterLogger.Debug("Creating cluster state for cluster " + res.FoundCluster)
@@ -187,8 +206,7 @@ func checkCurrentClusterStates() {
 			clusterFile := config.SaveStateDir + cluster + ".json"
 			if fileExists(clusterFile) {
 				clusterLogger.Info("Found previously existing cluster state file: " + clusterFile)
-				var cs clusterState
-				cs = readClusterStateFile(clusterFile, cluster, clusterLogger)
+				var cs clusterState = readClusterStateFile(clusterFile, cluster, clusterLogger)
 				if cs.CurrentOngoingRestarts > 0 || len(cs.CurrentRestartingServers) > 0 {
 					clusterLogger.Info("Trying to restart cluster node checks for clusterFile: " + clusterFile)
 					// restart the successfull reboot checker, otherwise it would block _all_ later restart requests
@@ -200,7 +218,6 @@ func checkCurrentClusterStates() {
 						checkerLogger.Info("Sleeping for reboot_completion_check_offset: " + cc.Csetting.RebootCompletionCheckOffset.String() + " for FQDN: " + cc.Fqdn)
 						clusterLogger.Info("Restarting cluster checker for " + restartingClusterNode + " inside cluster " + cluster + " check command: " + csetting.RebootCompletionCheck)
 					}
-
 				}
 			}
 		}(cluster, csetting)

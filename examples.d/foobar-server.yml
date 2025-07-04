@@ -16,7 +16,7 @@ foobar-server:
   reboot_completion_actions:
     - ./tests/reboot_successful_action.sh {:%fqdn%:} {:%cluster%:}
   reboot_completion_panic_threshold: 3h
-  reboot_completion_panic_action:
+  reboot_completion_panic_actions:
     mail:
         - xorpaul@gmail.com
     scripts:
