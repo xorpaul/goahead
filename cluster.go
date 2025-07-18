@@ -9,27 +9,35 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type rebootCompletionPanicActionsStruct struct {
+	Mail    []string `yaml:"mail"` // TODO: not implemented yet!
+	Scripts []string `yaml:"scripts"`
+}
+
 // clusterSetting contains the key value pairs from the config file
 type clusterSetting struct {
-	Enabled                                   bool          `yaml:"enabled"`
-	NamePattern                               string        `yaml:"name_pattern"`
-	BlacklistNamePattern                      []string      `yaml:"blacklist_name_pattern"`
-	ClusterType                               string        `yaml:"cluster_type"`
-	AllowedParallelRestarts                   int           `yaml:"allowed_parallel_restarts"`
-	RebootCompletionCheck                     string        `yaml:"reboot_completion_check"`
-	RebootCompletionCheckInterval             time.Duration `yaml:"reboot_completion_check_interval"`
-	RebootCompletionCheckConsecutiveSuccesses int           `yaml:"reboot_completion_check_consecutive_successes"`
-	RebootCompletionCheckOffset               time.Duration `yaml:"reboot_completion_check_offset"`
-	RebootCompletionActions                   []string      `yaml:"reboot_completion_actions"`
-	MinimumUptime                             time.Duration `yaml:"minimum_uptime"`
-	RebootGoaheadActions                      []string      `yaml:"reboot_goahead_actions"`
-	RebootGoaheadChecks                       []string      `yaml:"reboot_goahead_checks"`
-	RebootGoaheadChecksExitCodeForReboot      int           `yaml:"reboot_goahead_checks_exit_code_for_reboot"`
-	RaiseErrors                               bool          `yaml:"raise_errors"`
+	Enabled                                   bool                               `yaml:"enabled"`
+	NamePattern                               string                             `yaml:"name_pattern"`
+	BlacklistNamePattern                      []string                           `yaml:"blacklist_name_pattern"`
+	ClusterType                               string                             `yaml:"cluster_type"`
+	AllowedParallelRestarts                   int                                `yaml:"allowed_parallel_restarts"`
+	RebootCompletionCheck                     string                             `yaml:"reboot_completion_check"`
+	RebootCompletionCheckInterval             time.Duration                      `yaml:"reboot_completion_check_interval"`
+	RebootCompletionCheckConsecutiveSuccesses int                                `yaml:"reboot_completion_check_consecutive_successes"`
+	RebootCompletionCheckOffset               time.Duration                      `yaml:"reboot_completion_check_offset"`
+	RebootCompletionActions                   []string                           `yaml:"reboot_completion_actions"`
+	RebootCompletionPanicThreshold            time.Duration                      `yaml:"reboot_completion_panic_threshold"`
+	RebootCompletionPanicActions              rebootCompletionPanicActionsStruct `yaml:"reboot_completion_panic_actions"`
+	MinimumUptime                             time.Duration                      `yaml:"minimum_uptime"`
+	RebootGoaheadActions                      []string                           `yaml:"reboot_goahead_actions"`
+	RebootGoaheadChecks                       []string                           `yaml:"reboot_goahead_checks"`
+	RebootGoaheadChecksExitCodeForReboot      int                                `yaml:"reboot_goahead_checks_exit_code_for_reboot"`
+	RaiseErrors                               bool                               `yaml:"raise_errors"`
 }
 
 // clusterState contains information over the cluster (how many nodes are currently restarting, when was the last cluster node restart, how many of the cluster nodes are up-to-date)
 type clusterState struct {
+	LastRestartPanicTimestamp      time.Time           `json:"last_restart_panic_timestamp"`
 	LastRestartRequestTimestamp    time.Time           `json:"last_restart_request_timestamp"`
 	LastSuccessfulRestartTimestamp time.Time           `json:"last_successful_restart_timestamp"`
 	CurrentOngoingRestarts         int                 `yaml:"current_ongoing_restarts"`
@@ -57,8 +65,6 @@ func readClusterSetting(clusterSettingsFile string) {
 		clusterLoggers[clusterName] = clusterLogger
 		clusterLogger.Infof("Using cluster settings: %+v", clusterSetting)
 	}
-
-	return
 }
 
 // triggerRebootGoaheadActions executes optional scripts that should run, when a host recieved the go_ahead to restart
@@ -83,5 +89,18 @@ func triggerRebootCompletionActions(fqdn string, cluster string, uptime string, 
 		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
 		er := executeCommand(command, 5, !clusterSettings[cluster].RaiseErrors, clusterLogger)
 		clusterLogger.Info("reboot completion action result of "+command+" is ", er.returnCode)
+	}
+}
+
+// triggerRebootCompletionPanicActions executes optional scripts that should run when a host of a list will not back after reboot
+func triggerRebootCompletionPanicActions(fqdn string, cluster string, uptime string, clusterLogger *logrus.Entry) {
+	for _, action := range clusterSettings[cluster].RebootCompletionPanicActions.Scripts {
+		clusterLogger.Info("found reboot completion panic action:" + action)
+		command := strings.Replace(action, "{:%fqdn%:}", fqdn, -1)
+		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
+		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
+		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
+		er := executeCommand(command, 5, !clusterSettings[cluster].RaiseErrors, clusterLogger)
+		clusterLogger.Info("reboot completion panic action result of "+command+" is ", er.returnCode)
 	}
 }

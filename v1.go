@@ -134,7 +134,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			clusterLogger.Infof("Received " + string(r.RequestURI) + " request from " + request.Fqdn)
+			clusterLogger.Infof("Received %v request from %v", string(r.RequestURI), request.Fqdn)
 			if strings.HasPrefix(r.RequestURI, "/v1/inquire/") {
 				// check if there are sleeping checks for this server and start them,
 				// because the server only inquired if it should restart
@@ -178,7 +178,11 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 			if result.FqdnGoAhead {
 				result = checkClusterState(res, result, clusterLogger)
 			}
-			if result.FqdnGoAhead && result.ClusterGoAhead {
+			if result.RebootPanicThresholdEnabled {
+				res.Message = result.Reason
+				triggerRebootCompletionPanicActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
+				clusterLogger.Info("Reboot panic happened for cluster " + res.FoundCluster)
+			} else if result.FqdnGoAhead && result.ClusterGoAhead {
 				res.Message = result.Reason
 				res.Goahead = true
 				triggerRebootGoaheadActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
