@@ -79,6 +79,7 @@ func doRequest(req request, uri string, t *testing.T) response {
 func TestMain(m *testing.M) {
 	purgeDir("/tmp/goahead/", "TestMain")
 	go main()
+	time.Sleep(2 * time.Second) // Give server time to start
 	exitCode := m.Run()
 	os.Exit(exitCode)
 }
@@ -110,7 +111,7 @@ func TestMimimumUptime(t *testing.T) {
 	req := request{Fqdn: "foobar-server-aa07.domain.tld", Uptime: "1m"}
 	resp := doRequest(req, "v1/request/restart/os", t)
 	if !strings.Contains(string(resp.Message), expectedLine) {
-		t.Errorf("Could not find expected line '" + expectedLine + "' in response message field: " + resp.Message)
+		t.Errorf("Could not find expected line '%s' in response message field: %s", expectedLine, resp.Message)
 	}
 }
 
@@ -141,7 +142,7 @@ func TestGoahead(t *testing.T) {
 
 	for _, expectedLine := range expectedLines {
 		if !strings.Contains(string(content), expectedLine) {
-			t.Errorf("Could not find expected line '" + expectedLine + "' in goahead cluster logfile " + foobarServerLogfile + ". Check variable replacement in reboot_goahead_actions command.")
+			t.Errorf("Could not find expected line '%s' in goahead cluster logfile %s. Check variable replacement in reboot_goahead_actions command.", expectedLine, foobarServerLogfile)
 		}
 	}
 
@@ -181,7 +182,7 @@ func TestGoahead(t *testing.T) {
 	contentChecker, _ := os.ReadFile(checkerLogfile)
 	for _, expectedLine := range expectedLines {
 		if strings.Contains(string(contentChecker), expectedLine) {
-			t.Errorf("Did find line '" + expectedLine + "' in goahead checker logfile " + checkerLogfile + ", but it should not be here, because the reported_uptime wasn't lower than the previuously received uptime. Indicating that no reboot happened!")
+			t.Errorf("Did find line '%s' in goahead checker logfile %s, but it should not be here, because the reported_uptime wasn't lower than the previuously received uptime. Indicating that no reboot happened!", expectedLine, checkerLogfile)
 		}
 	}
 
@@ -193,7 +194,7 @@ func TestGoahead(t *testing.T) {
 	contentChecker, _ = os.ReadFile(checkerLogfile)
 	for _, expectedLine := range expectedLines {
 		if !strings.Contains(string(contentChecker), expectedLine) {
-			t.Errorf("Did not find expected line '" + expectedLine + "' in goahead checker logfile " + checkerLogfile)
+			t.Errorf("Did not find expected line '%s' in goahead checker logfile %s", expectedLine, checkerLogfile)
 		}
 	}
 
@@ -248,7 +249,7 @@ func testGoaheadFalse(t *testing.T) {
 	}
 	expectedLine := "Denied restart request as the current_ongoing_restarts of cluster foobar-server is larger than the allowed_parallel_restarts: 2 >= 2 Currently restarting hosts: foobar-server-aa07.domain.tld,foobar-server-aa67.domain.tld"
 	if !strings.Contains(string(resp.Message), expectedLine) {
-		t.Errorf("Could not find expected line '" + expectedLine + "' in response message field: " + resp.Message)
+		t.Errorf("Could not find expected line '%s' in response message field: %s", expectedLine, resp.Message)
 	}
 
 }

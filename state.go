@@ -25,7 +25,7 @@ func saveAckFile(res response, clusterLogger *logrus.Entry) {
 	folder := filepath.Join(config.SaveStateDir, res.FoundCluster)
 	checkDirAndCreate(folder, "SaveAckFile cluster directory")
 	file := filepath.Join(folder, res.RequestingFqdn+".json")
-	clusterLogger.Infof("Trying to save fqdn ACK file " + file)
+	clusterLogger.Infof("Trying to save fqdn ACK file %s", file)
 	writeStructJSONFile(file, res)
 }
 
