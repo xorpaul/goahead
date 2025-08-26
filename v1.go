@@ -154,17 +154,14 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 						clusterLogger.Info(res.Message)
 						respondWithJSON(w, http.StatusOK, rid, res)
 						return
-					} else {
-						clusterLogger.Infof("Responding to %s with %+v", r.RequestURI, res)
-						respondWithJSON(w, http.StatusOK, rid, res)
-						return
 					}
-
-				} else {
 					clusterLogger.Infof("Responding to %s with %+v", r.RequestURI, res)
 					respondWithJSON(w, http.StatusOK, rid, res)
 					return
 				}
+				clusterLogger.Infof("Responding to %s with %+v", r.RequestURI, res)
+				respondWithJSON(w, http.StatusOK, rid, res)
+				return
 			}
 			if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
 				res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime
