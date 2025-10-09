@@ -1,0 +1,3 @@
+[submodule "go-build-release"]
+	path = go-build-release
+	url = https://github.com/xorpaul/go-build-release
