@@ -28,3 +28,4 @@ home:*/**
 #Archives and others
 *.gz
 *.xz
+build
