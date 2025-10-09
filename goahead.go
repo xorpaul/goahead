@@ -42,7 +42,7 @@ func main() {
 	version := *versionFlag
 
 	if version {
-		fmt.Println("goahead version 0.0.7 Build time:", buildtime, "UTC")
+		fmt.Println("goahead version 0.0.8 Build time:", buildtime, "UTC")
 		os.Exit(0)
 	}
 
@@ -60,22 +60,22 @@ func main() {
 
 	if len(config.IncludeDir) > 0 {
 		if isDir(config.IncludeDir) {
-			mainLogger.Debug("Glob'ing with " + config.IncludeDir + "**/*.yml")
+			mainLogger.Debug("Glob'ing with " + config.IncludeDir + "**/*.(yml|yaml)")
 			files := []string{}
 			err := filepath.Walk(config.IncludeDir, func(path string, f os.FileInfo, err error) error {
 				mainLogger.Info("Checking for file extension on file: " + path)
-				if filepath.Ext(path) == ".yml" {
+				if filepath.Ext(path) == ".yml" || filepath.Ext(path) == ".yaml" {
 					files = append(files, path)
 				}
 				return nil
 			})
 
 			if len(files) == 0 {
-				mainLogger.Fatal("Could not find any cluster settings matching " + config.IncludeDir + "**/*.yml")
+				mainLogger.Fatal("Could not find any cluster settings matching " + config.IncludeDir + "**/*.(yml|yaml)")
 			}
 			Debugf("found potential module versions:" + strings.Join(files, " "))
 			if err != nil {
-				mainLogger.Fatal("Failed to glob cluster settings include_dir with glob path " + config.IncludeDir + "**/*.yml Error: " + err.Error())
+				mainLogger.Fatal("Failed to glob cluster settings include_dir with glob path " + config.IncludeDir + "**/*.(yml|yaml) Error: " + err.Error())
 			}
 			for _, f := range files {
 				readClusterSetting(f)
