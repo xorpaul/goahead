@@ -10,8 +10,8 @@ foobar-server-standalone:
   reboot_completion_check_consecutive_successes: 5
   reboot_completion_check_offset: 2s
   reboot_completion_panic_threshold: 3h
-  reboot_completion_panic_actions: 
-    - mail:
-        - xorpaul@gmail.com
-    - scripts:
-        - touch /tmp/{:%fqdn%:}_panic
+  reboot_completion_panic_actions:
+    mail:
+      - xorpaul@gmail.com
+    scripts:
+      - touch /tmp/{:%fqdn%:}_panic
