@@ -276,13 +276,16 @@ func keysString(m map[string]struct{}) []string {
 }
 
 func initLogger(fileName string) *log.Entry {
-	log.Debug("setting up log file:" + filepath.Join(config.LogBaseDir, fileName+".log"))
+	logPath := filepath.Join(config.LogBaseDir, fileName+".log")
+	log.Debug("setting up log file:" + logPath)
 	var logrusLog = log.New()
-	file, err := os.OpenFile(filepath.Join(config.LogBaseDir, fileName+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
-		logrusLog.Out = file
+		// Write to both file and stderr so fatal errors are visible to the user
+		logrusLog.Out = io.MultiWriter(file, os.Stderr)
 	} else {
-		log.Fatal("Failed to log to file " + filepath.Join(config.LogBaseDir, fileName+".log") + " Error: " + err.Error())
+		fmt.Fprintln(os.Stderr, "FATAL: Failed to log to file "+logPath+" Error: "+err.Error())
+		log.Fatal("Failed to log to file " + logPath + " Error: " + err.Error())
 	}
 	if debug {
 		logrusLog.SetLevel(log.DebugLevel)
