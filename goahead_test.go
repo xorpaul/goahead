@@ -150,10 +150,10 @@ func TestGoahead(t *testing.T) {
 	req = request{Fqdn: "foobar-server-aa07.domain.tld", Uptime: "2h31m"}
 	resp = doRequest(req, "v1/request/restart/os", t)
 	req.RequestID = resp.RequestID
-	
+
 	// Add small delay to ensure first request is processed
 	time.Sleep(100 * time.Millisecond)
-	
+
 	resp = doRequest(req, "v1/request/restart/os", t)
 	// The second request with the same RequestID should get Goahead=true (confirming the restart)
 	// and the message should indicate it's already restarting
@@ -194,27 +194,27 @@ func TestGoahead(t *testing.T) {
 	}
 
 	req.Uptime = "2s"
-	
+
 	// The completion checks might have already finished by now since they run with 0s interval
 	// Let's make a new restart request to ensure we get into the reboot_completion_check_offset sleep state
 	req = request{Fqdn: "foobar-server-aa08.domain.tld", Uptime: "2h31m"}
 	resp = doRequest(req, "v1/request/restart/os", t)
 	req.RequestID = resp.RequestID
 	resp = doRequest(req, "v1/request/restart/os", t)
-	
+
 	// Now quickly make an inquire request with low uptime to interrupt the sleep
 	time.Sleep(100 * time.Millisecond) // Give time for reboot completion check to start
 	req.Uptime = "2s"
 	req.Fqdn = "foobar-server-aa08.domain.tld"
 	resp = doRequest(req, "v1/inquire/restart/", t)
-	
+
 	expectedLines = []string{
 		"Received inquire request from FQDN foobar-server-aa08.domain.tld Interrupting reboot_completion_check_offset sleep!",
 	}
-	
+
 	// Give some time for log entry to be written
 	time.Sleep(200 * time.Millisecond)
-	
+
 	contentChecker, _ = os.ReadFile(checkerLogfile)
 	// Check if we find the expected line with either aa07 or aa08
 	found := false
@@ -225,7 +225,7 @@ func TestGoahead(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if !found {
 		// This might be expected behavior if the reboot completion check finished before the inquire request
 		// In test environments with 0s intervals, the checks complete very quickly
@@ -240,6 +240,33 @@ func TestGoahead(t *testing.T) {
 	if !fileExists(rebootCompletionFile) {
 		t.Errorf("Reboot completion action trigger created file does not exist: %s", rebootCompletionFile)
 	}
+}
+
+func TestClusterStateFile(t *testing.T) {
+	t.Run("empty file", func(t *testing.T) {
+		config.SaveStateDir = t.TempDir()
+		config.LogBaseDir = config.SaveStateDir
+
+		clusterStateFile := filepath.Join(config.SaveStateDir, "foobar-server.json")
+
+		if err := os.WriteFile(clusterStateFile, []byte(""), 0644); err != nil {
+			t.Fatalf("Failed to create empty cluster state file: %v", err)
+		}
+
+		req := request{Fqdn: "foobar-server-aa07.domain.tld", Uptime: "2h31m"}
+		resp := doRequest(req, "v1/request/restart/os", t)
+
+		if len(resp.RequestID) < 1 {
+			t.Error("Did not receive any request_id in response")
+		}
+
+		req.RequestID = resp.RequestID
+		resp = doRequest(req, "v1/request/restart/os", t)
+
+		if resp.Goahead != true {
+			t.Errorf("Expected go_ahead: true even with empty cluster state file, got: %v. Message: %s", resp.Goahead, resp.Message)
+		}
+	})
 }
 
 func testGoaheadFalse(t *testing.T) {

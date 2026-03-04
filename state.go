@@ -115,6 +115,9 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 	if fileExists(clusterFile) {
 		// read clusterFile and check if global clusterStates exists
 		cs = readClusterStateFile(clusterFile, res.FoundCluster, clusterLogger)
+		if cs.CurrentRestartingServers == nil {
+			cs.CurrentRestartingServers = make(map[string]struct{})
+		}
 		if _, ok := cs.CurrentRestartingServers[res.RequestingFqdn]; ok {
 			result.Reason = "You should already be restarting!"
 			result.ClusterGoAhead = true
