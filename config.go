@@ -1,8 +1,17 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
@@ -44,15 +53,14 @@ func readConfigfile(configFile string) configSettings {
 		config.Timeout = 5
 	}
 
-	if !fileExists(config.PrivateKey) {
-		Fatalf("Failed to find configured ssl_private_key " + config.PrivateKey)
+	if !fileExists(config.PrivateKey) || !fileExists(config.CertificateFile) {
+		fmt.Println("SSL key or certificate not found, generating self-signed certificate")
+		if err := generateSelfSignedCert(config.CertificateFile, config.PrivateKey); err != nil {
+			Fatalf("Failed to generate self-signed certificate: " + err.Error())
+		}
 	}
 
-	if !fileExists(config.CertificateFile) {
-		Fatalf("Failed to find configured ssl_certificate_file " + config.CertificateFile)
-	}
-
-	if !fileExists(config.ClientCertCaFile) {
+	if config.RequireAndVerifyClientCert && !fileExists(config.ClientCertCaFile) {
 		Fatalf("Failed to find configured ssl_client_cert_ca_file " + config.ClientCertCaFile)
 	}
 
@@ -73,4 +81,52 @@ func readConfigfile(configFile string) configSettings {
 	}
 
 	return config
+}
+
+// generateSelfSignedCert creates a self-signed ECDSA certificate and key at the given paths.
+func generateSelfSignedCert(certFile, keyFile string) error {
+	if err := os.MkdirAll(filepath.Dir(certFile), 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(keyFile), 0755); err != nil {
+		return err
+	}
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return err
+	}
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "goahead-selfsigned"},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
+		DNSNames:     []string{"localhost"},
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		return err
+	}
+
+	certOut, err := os.Create(certFile)
+	if err != nil {
+		return err
+	}
+	defer certOut.Close()
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
+		return err
+	}
+
+	keyOut, err := os.Create(keyFile)
+	if err != nil {
+		return err
+	}
+	defer keyOut.Close()
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return err
+	}
+	return pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 }
