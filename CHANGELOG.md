@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.0] - 2026-09-18
+
+### Added
+- Auto-generate a self-signed ECDSA P-256 TLS certificate and key when the configured `ssl_private_key` or `ssl_certificate_file` paths do not exist on disk, so the server (and test suite) starts without any manual certificate setup. The generated certificate includes SANs for `127.0.0.1`, `::1`, and `localhost`.
+
+### Fixed
+- Panic when the cluster state JSON file exists but is empty (contributed by linxside, PR #11)
+- `ssl_client_cert_ca_file` existence check is now conditional on `ssl_require_and_verify_client_cert: true`; it was previously checked unconditionally even though it is only loaded in that branch
+
+### Changed
+- Updated vendor dependencies
+
 ## [v0.0.9] - 2026-01-21
 
 ### Added
