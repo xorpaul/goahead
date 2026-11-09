@@ -29,6 +29,9 @@ type configSettings struct {
 	ClientCertCaFile           string        `yaml:"ssl_client_cert_ca_file"`
 	SaveStateDir               string        `yaml:"save_state_dir"`
 	LogBaseDir                 string        `yaml:"log_base_dir"`
+	SendmailPath               string        `yaml:"sendmail_path"`
+	MailFrom                   string        `yaml:"mail_from"`
+	ClusterConfigURLBase       string        `yaml:"cluster_config_url_base"`
 }
 
 // readConfigfile creates the configSettings struct from the config file
@@ -67,6 +70,11 @@ func readConfigfile(configFile string) configSettings {
 	// set default listen address to 0.0.0.0
 	if len(config.ListenAddress) < 1 {
 		config.ListenAddress = "0.0.0.0"
+	}
+
+	// set default sendmail binary
+	if len(config.SendmailPath) < 1 {
+		config.SendmailPath = "/usr/sbin/sendmail"
 	}
 
 	// set default save state directory to "/tmp/goahead/"

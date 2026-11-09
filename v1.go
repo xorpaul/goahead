@@ -177,7 +177,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 			}
 			if result.RebootPanicThresholdEnabled {
 				res.Message = result.Reason
-				triggerRebootCompletionPanicActions(request.Fqdn, res.FoundCluster, request.Uptime, clusterLogger)
+				go handleRebootPanic(panicEvent{Cluster: res.FoundCluster, Hosts: result.PanicHosts, Trigger: "goahead request from " + request.Fqdn, LastRestartRequest: result.PanicLastRestartRequest}, clusterLogger)
 				clusterLogger.Info("Reboot panic happened for cluster " + res.FoundCluster)
 			} else if result.FqdnGoAhead && result.ClusterGoAhead {
 				res.Message = result.Reason

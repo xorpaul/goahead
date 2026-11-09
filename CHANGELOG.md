@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `reboot_completion_panic_actions` `mail` is now implemented: a mail is sent via the local `sendmail` (`sendmail_path`, `mail_from`) containing the re-executed `reboot_completion_check` and panic script command lines, exit codes and output for every host that did not come back, plus a link to the cluster config file (`cluster_config_url_base`)
+- Support for the list format `reboot_completion_panic_action` (singular, `- mail: [...]`, `- script1: [...]`) that all goaheadmw cluster configs use; it was silently ignored before
+- Background timer that fires the reboot completion panic actions without needing an incoming request
+
+### Changed
+- The test suite no longer hard-codes port 8443 and `/tmp/goahead/`: the port defaults to `listen_port` of `config.yml` and can be set with `-goahead-test-port` or `GOAHEAD_TEST_PORT` (`0` picks a free port); state and logs go to a private temporary directory. `main()` was split into `main()` and `run(configFile)` for this
+- Clusters with `reboot_completion_check_offset` larger than `reboot_completion_panic_threshold` are automatically disabled at startup and an ERROR is logged, because the panic would fire before the completion check starts polling
+- Panic actions now run asynchronously and once per host that is still offline, with `{:%fqdn%:}` being the offline host instead of the host that sent the triggering request
+- A `reboot_completion_panic_threshold` of `0` or unset no longer triggers a panic on every request
+
 ## [v0.1.0] - 2026-09-18
 
 ### Added

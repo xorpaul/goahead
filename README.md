@@ -40,7 +40,12 @@ ssl_certificate_file: /etc/goahead/ssl/goahead.pem
 ssl_private_key: /etc/goahead/ssl/goahead.key
 ssl_client_cert_ca_file: /etc/goahead/ssl/ca.pem
 ssl_require_and_verify_client_cert: false
+sendmail_path: /usr/sbin/sendmail   # optional, default /usr/sbin/sendmail
+mail_from: goahead@example.com      # optional, default goahead@<hostname>
+cluster_config_url_base: https://git.example.com/org/goaheadmw/src/branch/main/files/cluster.conf.d/   # optional
 ```
+
+`sendmail_path`, `mail_from` and `cluster_config_url_base` are only used for the `mail` entries of `reboot_completion_panic_actions`. The link in the mail is `cluster_config_url_base` plus the path of the cluster file relative to `include_dir`. When `include_dir` is the deployed content of `files/cluster.conf.d/live/` (goaheadmw), the base must end in `.../files/cluster.conf.d/live/`.
 
 If `ssl_certificate_file` or `ssl_private_key` do not exist, goahead generates a self-signed certificate automatically on startup (useful for development and testing).
 
@@ -125,12 +130,18 @@ Returns the same response shape as above but never grants a restart or triggers 
 4. **Client reboots** — the client acts on the approval and reboots.
 5. **Completion check** — when the host contacts goahead again with low uptime, the `reboot_completion_check` command is polled every `reboot_completion_check_interval` until it succeeds `reboot_completion_check_consecutive_successes` times.
 6. **Completion actions** — once the check passes, `reboot_completion_actions` run, the host is removed from the restarting set, and the cluster slot is freed for the next host.
-7. **Panic threshold** — if the host has not successfully rebooted within `reboot_completion_panic_threshold`, `reboot_completion_panic_actions` are triggered.
+7. **Panic threshold** — if a host has not successfully rebooted within `reboot_completion_panic_threshold` after the last goahead, `reboot_completion_panic_actions` are triggered. A background timer checks this every 30 seconds, so it fires even if no further requests arrive; a later request from another host can trigger it as well. After a panic the actions repeat at most once per threshold. For every host that is still offline goahead re-runs `reboot_completion_check`, runs the `scripts` (with `{:%fqdn%:}` being the offline host) and mails the full command lines, exit codes and output to the `mail` recipients using the local `sendmail`, including a link to the cluster config file. A threshold of `0` or unset disables the panic. A cluster whose `reboot_completion_check_offset` is larger than `reboot_completion_panic_threshold` is automatically disabled at startup with an ERROR in the main and cluster log. Besides the `mail:`/`scripts:` map, the list format used by the goaheadmw cluster configs is accepted as `reboot_completion_panic_action:` (singular): a list of single-key maps where `mail` holds addresses and every other key (`script1`, `script2`, ...) holds commands.
 
 ## Testing
 
 ```sh
 go test -v
+```
+
+The test server listens on `listen_port` of `./config.yml` (8443) by default and uses a private temporary directory for its state and logs, so the tests never touch `/tmp/goahead/`. If that port is taken, choose another one with `go test -goahead-test-port=9443`, with the environment variable `GOAHEAD_TEST_PORT=9443`, or `0` for any free port:
+
+```sh
+go test -v -goahead-test-port=0
 ```
 
 No pre-existing SSL certificates are required — goahead generates a self-signed certificate into `./ssl/` automatically if the files are missing.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type rebootCompletionPanicActionsStruct struct {
-	Mail    []string `yaml:"mail"` // TODO: not implemented yet!
+	Mail    []string `yaml:"mail"`
 	Scripts []string `yaml:"scripts"`
 }
 
@@ -28,11 +29,15 @@ type clusterSetting struct {
 	RebootCompletionActions                   []string                           `yaml:"reboot_completion_actions"`
 	RebootCompletionPanicThreshold            time.Duration                      `yaml:"reboot_completion_panic_threshold"`
 	RebootCompletionPanicActions              rebootCompletionPanicActionsStruct `yaml:"reboot_completion_panic_actions"`
-	MinimumUptime                             time.Duration                      `yaml:"minimum_uptime"`
-	RebootGoaheadActions                      []string                           `yaml:"reboot_goahead_actions"`
-	RebootGoaheadChecks                       []string                           `yaml:"reboot_goahead_checks"`
-	RebootGoaheadChecksExitCodeForReboot      int                                `yaml:"reboot_goahead_checks_exit_code_for_reboot"`
-	RaiseErrors                               bool                               `yaml:"raise_errors"`
+	// RebootCompletionPanicActionList is the list format used by the goaheadmw cluster configs:
+	// a list of single key maps, where the key "mail" holds mail addresses and every other key (script1, script2, ...) holds commands
+	RebootCompletionPanicActionList      []map[string][]string `yaml:"reboot_completion_panic_action"`
+	MinimumUptime                        time.Duration         `yaml:"minimum_uptime"`
+	RebootGoaheadActions                 []string              `yaml:"reboot_goahead_actions"`
+	RebootGoaheadChecks                  []string              `yaml:"reboot_goahead_checks"`
+	RebootGoaheadChecksExitCodeForReboot int                   `yaml:"reboot_goahead_checks_exit_code_for_reboot"`
+	RaiseErrors                          bool                  `yaml:"raise_errors"`
+	ConfigFile                           string                `yaml:"-"`
 }
 
 // clusterState contains information over the cluster (how many nodes are currently restarting, when was the last cluster node restart, how many of the cluster nodes are up-to-date)
@@ -60,9 +65,20 @@ func readClusterSetting(clusterSettingsFile string) {
 
 	for clusterName, clusterSetting := range cs {
 		mainLogger.Debug("Adding cluster settings " + clusterName)
-		clusterSettings[clusterName] = clusterSetting
+		clusterSetting.ConfigFile = clusterSettingsFile
+		clusterSetting.mergePanicActionList()
 		clusterLogger := initLogger(clusterName)
 		clusterLoggers[clusterName] = clusterLogger
+		if clusterSetting.Enabled && clusterSetting.RebootCompletionPanicThreshold > 0 && clusterSetting.RebootCompletionCheckOffset > clusterSetting.RebootCompletionPanicThreshold {
+			msg := "Cluster " + clusterName + " is automatically DISABLED: reboot_completion_check_offset (" + clusterSetting.RebootCompletionCheckOffset.String() +
+				") is larger than reboot_completion_panic_threshold (" + clusterSetting.RebootCompletionPanicThreshold.String() + ") in " + clusterSettingsFile +
+				". The reboot completion check would not even start polling before the panic actions fire for a host that is still rebooting. " +
+				"Lower reboot_completion_check_offset or raise reboot_completion_panic_threshold to enable the cluster."
+			clusterLogger.Error(msg)
+			mainLogger.Error(msg)
+			clusterSetting.Enabled = false
+		}
+		clusterSettings[clusterName] = clusterSetting
 		clusterLogger.Infof("Using cluster settings: %+v", clusterSetting)
 	}
 }
@@ -92,15 +108,20 @@ func triggerRebootCompletionActions(fqdn string, cluster string, uptime string, 
 	}
 }
 
-// triggerRebootCompletionPanicActions executes optional scripts that should run when a host of a list will not back after reboot
-func triggerRebootCompletionPanicActions(fqdn string, cluster string, uptime string, clusterLogger *logrus.Entry) {
-	for _, action := range clusterSettings[cluster].RebootCompletionPanicActions.Scripts {
-		clusterLogger.Info("found reboot completion panic action:" + action)
-		command := strings.Replace(action, "{:%fqdn%:}", fqdn, -1)
-		command = strings.Replace(command, "{:%cluster%:}", cluster, -1)
-		command = strings.Replace(command, "{:%uptime%:}", uptime, -1)
-		command = strings.Replace(command, "{:%hostname%:}", strings.SplitN(fqdn, ".", 2)[0], -1)
-		er := executeCommand(command, 5, !clusterSettings[cluster].RaiseErrors, clusterLogger)
-		clusterLogger.Info("reboot completion panic action result of "+command+" is ", er.returnCode)
+// mergePanicActionList adds the entries of the list format reboot_completion_panic_action to RebootCompletionPanicActions
+func (cs *clusterSetting) mergePanicActionList() {
+	for _, entry := range cs.RebootCompletionPanicActionList {
+		keys := make([]string, 0, len(entry))
+		for key := range entry {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if key == "mail" {
+				cs.RebootCompletionPanicActions.Mail = append(cs.RebootCompletionPanicActions.Mail, entry[key]...)
+			} else {
+				cs.RebootCompletionPanicActions.Scripts = append(cs.RebootCompletionPanicActions.Scripts, entry[key]...)
+			}
+		}
 	}
 }
