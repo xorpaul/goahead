@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.2.0] - 2026-11-09
 
 ### Added
 - `reboot_completion_panic_actions` `mail` is now implemented: a mail is sent via the local `sendmail` (`sendmail_path`, `mail_from`) containing the re-executed `reboot_completion_check` and panic script command lines, exit codes and output for every host that did not come back, plus a link to the cluster config file (`cluster_config_url_base`)
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clusters with `reboot_completion_check_offset` larger than `reboot_completion_panic_threshold` are automatically disabled at startup and an ERROR is logged, because the panic would fire before the completion check starts polling
 - Panic actions now run asynchronously and once per host that is still offline, with `{:%fqdn%:}` being the offline host instead of the host that sent the triggering request
 - A `reboot_completion_panic_threshold` of `0` or unset no longer triggers a panic on every request
+- Updated vendor dependencies (`golang.org/x/sys` v0.50.0, `github.com/mattn/go-colorable` v0.1.16)
 
 ## [v0.1.0] - 2026-09-18
 
