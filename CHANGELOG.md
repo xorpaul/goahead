@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `reboot_completion_panic_threshold` of `0` or unset no longer triggers a panic on every request
 - Updated vendor dependencies (`golang.org/x/sys` v0.50.0, `github.com/mattn/go-colorable` v0.1.16)
 
+### Fixed
+- `-version` printed a hard-coded `0.0.8`; it now prints the version injected at build time by `build_release.sh` (`-X main.buildversion=...`), or `dev` for a plain `go build`
+
 ## [v0.1.0] - 2026-09-18
 
 ### Added
