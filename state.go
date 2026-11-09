@@ -11,6 +11,8 @@ import (
 
 type rebootCheckResult struct {
 	RebootPanicThresholdEnabled bool
+	PanicHosts                  []string
+	PanicLastRestartRequest     time.Time
 	FqdnGoAhead                 bool
 	ClusterGoAhead              bool
 	Reason                      string
@@ -123,13 +125,12 @@ func checkClusterState(res response, result rebootCheckResult, clusterLogger *lo
 			result.ClusterGoAhead = true
 			return result
 		} else if len(cs.CurrentRestartingServers) > 0 &&
-			// we do not want to run script on every request, we will wait for next threshold (act like interval)
-			time.Since(cs.LastRestartPanicTimestamp).Seconds() > clusterSettings[res.FoundCluster].RebootCompletionPanicThreshold.Seconds() &&
-			// we have meet threshold
-			time.Since(cs.LastRestartRequestTimestamp).Seconds() > clusterSettings[res.FoundCluster].RebootCompletionPanicThreshold.Seconds() {
+			rebootPanicDue(res.FoundCluster, cs) {
 			result.Reason = "Reboot completion panic threshold met for cluster " + res.FoundCluster + " because previous host " + strings.Join(keysString(cs.CurrentRestartingServers), ",") + " still offline!"
 			result.ClusterGoAhead = false
 			result.RebootPanicThresholdEnabled = true
+			result.PanicHosts = keysString(cs.CurrentRestartingServers)
+			result.PanicLastRestartRequest = cs.LastRestartRequestTimestamp
 			cs.LastRestartPanicTimestamp = time.Now()
 			clusterLogger.Debug("Trying to save cluster ACK file on restart panic " + clusterFile)
 			if err := writeStructJSONFile(clusterFile, cs); err != nil {
