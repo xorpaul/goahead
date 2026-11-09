@@ -46,6 +46,11 @@ func main() {
 		os.Exit(0)
 	}
 
+	run(configFile)
+}
+
+// run reads the config file, loads the cluster settings and serves requests. It blocks forever and is separate from main() so the tests can start it with their own config.
+func run(configFile string) {
 	config = readConfigfile(configFile)
 
 	clusterLoggers = make(map[string]*logrus.Entry)
@@ -89,6 +94,9 @@ func main() {
 
 	// check for previously create cluster state files and check if I need to restart checker
 	go checkCurrentClusterStates()
+
+	// fire reboot completion panic actions even if no requests arrive anymore
+	go startRebootPanicTimer()
 
 	go serve()
 
