@@ -15,3 +15,5 @@ foobar-server-standalone:
       - xorpaul@gmail.com
     scripts:
       - touch /tmp/{:%fqdn%:}_panic
+  reboot_completion_release_removed_hosts: true
+  reboot_completion_removed_host_grace: 1h

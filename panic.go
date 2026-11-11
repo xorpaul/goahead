@@ -170,6 +170,9 @@ func handleRebootPanic(event panicEvent, clusterLogger *logrus.Entry) {
 		}
 		fmt.Fprintf(&body, "\n==================== %s (last reported uptime: %s) ====================\n", host, uptime)
 
+		body.WriteString(describeHostPresence(event.Cluster, host))
+		fmt.Fprintf(&body, "Forget host:  %s\n", forgetCommand(host, event.Cluster))
+
 		if cs.RebootCompletionCheck != "" {
 			body.WriteString("\n--- reboot completion check, executed again now ---\n")
 			pe := runCaptured(substitutePlaceholders(cs.RebootCompletionCheck, host, event.Cluster, uptime), panicCommandTimeout)
@@ -264,4 +267,9 @@ func sendMail(to []string, subject, body string, logger *logrus.Entry) error {
 	}
 	logger.Info("Sent reboot completion panic mail to " + strings.Join(recipients, ","))
 	return nil
+}
+
+// forgetCommand is the command that takes a host out of the cluster state, shown in the panic mail
+func forgetCommand(fqdn, cluster string) string {
+	return "goahead -config " + configFilePath + " -forget " + fqdn + " -cluster " + cluster
 }

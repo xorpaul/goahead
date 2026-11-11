@@ -28,7 +28,7 @@ func TestHandleRebootPanicMail(t *testing.T) {
 		RebootCompletionCheck:          failCheck + " {:%fqdn%:}",
 		RebootCompletionPanicThreshold: 3 * time.Hour,
 		RebootCompletionPanicActions:   rebootCompletionPanicActionsStruct{Mail: []string{"ops@example.com"}, Scripts: []string{"/bin/echo panic for {:%hostname%:} in {:%cluster%:}"}},
-		ConfigFile:                     "conf.d/live/itohi/dave.yml",
+		ConfigFile:                     "conf.d/live/team/cluster.yml",
 	}}
 	clusterLoggers = map[string]*logrus.Entry{"testcluster": initLogger("panic-test")}
 
@@ -38,7 +38,7 @@ func TestHandleRebootPanicMail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no mail sent: %v", err)
 	}
-	for _, want := range []string{"ARGS: -i -- ops@example.com", "Subject: [goahead] PANIC: host1.example.com", "Exit code: 2", "CRITICAL: host1.example.com is down", "panic for host1 in testcluster", "https://git.example/src/branch/main/files/cluster.conf.d/live/itohi/dave.yml"} {
+	for _, want := range []string{"ARGS: -i -- ops@example.com", "Subject: [goahead] PANIC: host1.example.com", "Exit code: 2", "CRITICAL: host1.example.com is down", "panic for host1 in testcluster", "https://git.example/src/branch/main/files/cluster.conf.d/live/team/cluster.yml"} {
 		if !strings.Contains(string(data), want) {
 			t.Errorf("mail does not contain %q:\n%s", want, data)
 		}

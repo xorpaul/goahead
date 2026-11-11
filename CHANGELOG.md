@@ -5,11 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2026-11-11
+
+### Added
+- Deleted hosts no longer block their cluster: with `reboot_completion_release_removed_hosts: true` a restarting host that has a DNS NXDOMAIN, or that the new optional `reboot_completion_removed_host_check` command reports as removed (exit code `0`, `1` = exists, anything else unknown), is released from the cluster state after `reboot_completion_removed_host_grace` (default `1h`) and the panic mail recipients get a mail. A host the check reports as existing is never released; errors, timeouts and SERVFAIL never release a host
+- Panic mail: every offline host shows the DNS and removed host check status and the command to forget it
+- `goahead -forget <fqdn> [-cluster <name>]` removes a host from the cluster state and deletes its ACK file
+
+### Changed
+- The reboot completion check stops polling when its host is no longer part of the restarting hosts of the cluster (released or forgotten), instead of looping forever
+
+### Fixed
+- `reboot_completion_check_offset` is now actually waited on: after a goahead the reboot completion check starts once the offset has elapsed, even if the host never inquires again (e.g. disabled client). Before, the wait had been commented out since 2019 and such a host blocked its cluster until the panic threshold. An inquire with a shorter uptime still starts the check earlier
+- An inquire no longer starts the reboot completion check just because the ACK file has `go_ahead` set; only a shorter reported uptime does
+
 ## [v0.2.0] - 2026-11-09
 
 ### Added
 - `reboot_completion_panic_actions` `mail` is now implemented: a mail is sent via the local `sendmail` (`sendmail_path`, `mail_from`) containing the re-executed `reboot_completion_check` and panic script command lines, exit codes and output for every host that did not come back, plus a link to the cluster config file (`cluster_config_url_base`)
-- Support for the list format `reboot_completion_panic_action` (singular, `- mail: [...]`, `- script1: [...]`) that all goaheadmw cluster configs use; it was silently ignored before
+- Support for the list format `reboot_completion_panic_action` (singular, `- mail: [...]`, `- script1: [...]`) that other cluster config repositories use; it was silently ignored before
 - Background timer that fires the reboot completion panic actions without needing an incoming request
 
 ### Changed

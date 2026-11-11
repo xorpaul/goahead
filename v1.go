@@ -186,7 +186,9 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				clusterLogger.Info("Activating cluster checker for " + request.Fqdn + " inside cluster " + res.FoundCluster)
 				mutex.Lock()
 				if _, ok := sleepingClusterChecks[res.RequestingFqdn]; !ok {
-					sleepingClusterChecks[request.Fqdn] = clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}
+					cc := clusterCheck{clusterSettings[c], request.Fqdn, rid, res.FoundCluster}
+					sleepingClusterChecks[request.Fqdn] = cc
+					scheduleCheckAfterOffset(cc, request)
 				}
 				mutex.Unlock()
 			} else {

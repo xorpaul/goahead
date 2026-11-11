@@ -28,8 +28,11 @@ type clusterSetting struct {
 	RebootCompletionCheckOffset               time.Duration                      `yaml:"reboot_completion_check_offset"`
 	RebootCompletionActions                   []string                           `yaml:"reboot_completion_actions"`
 	RebootCompletionPanicThreshold            time.Duration                      `yaml:"reboot_completion_panic_threshold"`
+	ReleaseRemovedHosts                       bool                               `yaml:"reboot_completion_release_removed_hosts"`
+	RemovedHostCheck                          string                             `yaml:"reboot_completion_removed_host_check"`
+	RemovedHostGrace                          time.Duration                      `yaml:"reboot_completion_removed_host_grace"`
 	RebootCompletionPanicActions              rebootCompletionPanicActionsStruct `yaml:"reboot_completion_panic_actions"`
-	// RebootCompletionPanicActionList is the list format used by the goaheadmw cluster configs:
+	// RebootCompletionPanicActionList is the list format used by the cluster configs of other tools:
 	// a list of single key maps, where the key "mail" holds mail addresses and every other key (script1, script2, ...) holds commands
 	RebootCompletionPanicActionList      []map[string][]string `yaml:"reboot_completion_panic_action"`
 	MinimumUptime                        time.Duration         `yaml:"minimum_uptime"`

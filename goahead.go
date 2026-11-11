@@ -19,6 +19,7 @@ var (
 	buildtime             string
 	buildversion          string
 	config                configSettings
+	configFilePath        string
 	clusterSettings       map[string]clusterSetting
 	sleepingClusterChecks map[string]clusterCheck
 	checkCluster          chan clusterCheck
@@ -36,6 +37,8 @@ func main() {
 		configFileFlag = flag.String("config", "./config.yml", "which config file to use, defaults to ./config.yml")
 		versionFlag    = flag.Bool("version", false, "show build time and version number")
 	)
+	forgetFlag := flag.String("forget", "", "remove this FQDN from the cluster state (and delete its ACK file), e.g. a deleted host that blocks its cluster, then exit")
+	clusterFlag := flag.String("cluster", "", "with -forget: only forget the host in this cluster, defaults to all clusters")
 	flag.BoolVar(&debug, "debug", false, "log debug output, defaults to false")
 	flag.Parse()
 
@@ -51,11 +54,21 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *forgetFlag != "" {
+		config = readConfigfile(configFile)
+		if !forgetHost(*forgetFlag, *clusterFlag, logrus.NewEntry(logrus.StandardLogger())) {
+			fmt.Println("Host " + *forgetFlag + " is not part of any restarting hosts in " + config.SaveStateDir)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	run(configFile)
 }
 
 // run reads the config file, loads the cluster settings and serves requests. It blocks forever and is separate from main() so the tests can start it with their own config.
 func run(configFile string) {
+	configFilePath = configFile
 	config = readConfigfile(configFile)
 
 	clusterLoggers = make(map[string]*logrus.Entry)
@@ -102,6 +115,9 @@ func run(configFile string) {
 
 	// fire reboot completion panic actions even if no requests arrive anymore
 	go startRebootPanicTimer()
+
+	// release restarting hosts that were deleted (reboot_completion_release_removed_hosts)
+	go startRemovedHostsTimer()
 
 	go serve()
 
