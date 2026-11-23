@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -76,6 +77,9 @@ func run(configFile string) {
 	checkCluster = make(chan clusterCheck)
 	sleepingClusterChecks = make(map[string]clusterCheck)
 	startCheckerChannel = make(chan request)
+
+	serverStart = time.Now()
+	resetUI()
 
 	mainLogger = initLogger("goahead")
 	unknownLogger = initLogger("unknown")

@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/sirupsen/logrus v1.10.2
+	golang.org/x/crypto v0.59.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 

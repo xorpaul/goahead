@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2026-11-17
+
+### Added
+- Read-only web interface on the goahead port (same TLS listener, no extra port): `/ui/` lists every cluster with status (panic, stuck, restarting, idle, disabled), the hosts that are restarting now, the last restart given, the last completed restart and the node it was, the last panic and request counters; `/ui/cluster/<name>` shows the settings, the hosts and ACK files of one cluster, its events and the tail of its cluster log; `/ui/panic` lists the hosts that did not come back within `reboot_completion_panic_threshold` (and hosts of clusters without a threshold that wait for more than 3h) with the last check exit code and output, the check attempts, whether the host reports again, and the `-forget` command; `/ui/activity` shows every host whose reboot completion check is sleeping or polling with its number of check attempts and consecutive successes, per cluster request counters and the recent events; `/ui/status.json` has the same data as JSON
+- Optional access control for `/ui/` (the restart API is unchanged): `ui_allowed_cidrs` (source address allowlist), `ui_htpasswd_file` (HTTP basic auth with bcrypt hashes, reloaded when the file changes) and `ui_client_cert_ca_file` with `ui_allowed_client_cns` (client certificate, verified against that CA alone). The methods are alternatives, the allowlist always applies. Without any of them goahead logs a warning that the web interface is not protected. Adds the vendored `golang.org/x/crypto/bcrypt`
+- The web interface never reads the log files except the tail (last 128 KB) of one cluster log, it only escapes and never executes check output, and it has no actions: forgetting a host stays a command on the server
+
+### Changed
+- The reboot completion check keeps the real exit code and output of the check command (`executeCommand` replaced both with `1` and the error text for every failed check). A run is limited to 120s, before a hanging check blocked the loop forever. Only exit code `0` counts as success, as before
+
+### Fixed
+- After a restart of goahead the reboot completion check of the hosts that were restarting is scheduled again. `checkCurrentClusterStates` only put them into `sleepingClusterChecks` and logged that it restarted the checker, but nothing ever started the check, so such a host blocked its cluster until it inquired with a shorter uptime or was forgotten
+
 ## [v0.3.0] - 2026-11-11
 
 ### Added

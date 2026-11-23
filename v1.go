@@ -136,6 +136,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 
 			clusterLogger.Infof("Received %v request from %v", string(r.RequestURI), request.Fqdn)
 			if strings.HasPrefix(r.RequestURI, "/v1/inquire/") {
+				uiNoteRequest(c, request.Fqdn, request.Uptime, "inquire", false)
 				// check if there are sleeping checks for this server and start them,
 				// because the server only inquired if it should restart
 				// which means that the previous necessary restart did happen.
@@ -166,6 +167,7 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 			if uptime.Seconds() < clusterSettings[c].MinimumUptime.Seconds() {
 				res.Message = "Configured minimum uptime for cluster: " + time.Duration.String(clusterSettings[c].MinimumUptime) + " was not reached by client's uptime: " + request.Uptime
 				clusterLogger.Info(res.Message)
+				uiNoteRequest(c, request.Fqdn, request.Uptime, "request", false)
 				respondWithJSON(w, http.StatusOK, rid, res)
 				return
 			}
@@ -193,6 +195,10 @@ func restartHandlerV1(w http.ResponseWriter, r *http.Request) {
 				mutex.Unlock()
 			} else {
 				res.Message = result.Reason
+			}
+			uiNoteRequest(c, request.Fqdn, request.Uptime, "request", res.Goahead)
+			if res.Goahead {
+				uiRecordEvent(c, request.Fqdn, "goahead", "restart granted, reported uptime "+request.Uptime)
 			}
 			clusterLogger.Infof("Responding with %+v", res)
 			respondWithJSON(w, http.StatusOK, rid, res)

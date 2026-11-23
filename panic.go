@@ -142,6 +142,7 @@ func runCaptured(command string, timeout time.Duration) panicExec {
 func handleRebootPanic(event panicEvent, clusterLogger *logrus.Entry) {
 	cs := clusterSettings[event.Cluster]
 	sort.Strings(event.Hosts)
+	uiRecordEvent(event.Cluster, strings.Join(event.Hosts, ", "), "panic", "did not come back within "+cs.RebootCompletionPanicThreshold.String()+", triggered by "+event.Trigger)
 
 	var body strings.Builder
 	fmt.Fprintf(&body, "Host(s) did not come back after the reboot goahead in cluster %s.\n\n", event.Cluster)

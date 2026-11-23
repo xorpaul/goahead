@@ -213,6 +213,7 @@ func releaseRemovedHost(cluster, fqdn, detail string, since time.Time, clusterLo
 		return
 	}
 	deleteAckFile(fqdn, cluster)
+	uiRecordEvent(cluster, fqdn, "released", "removed host released from the cluster: "+detail)
 	msg := "Released removed host " + fqdn + " from the restarting hosts of cluster " + cluster + ": " + detail + " (seen as removed since " + since.Format(time.RFC3339) + ")"
 	clusterLogger.Warn(msg)
 	if mail := clusterSettings[cluster].RebootCompletionPanicActions.Mail; len(mail) > 0 {

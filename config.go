@@ -32,6 +32,10 @@ type configSettings struct {
 	SendmailPath               string        `yaml:"sendmail_path"`
 	MailFrom                   string        `yaml:"mail_from"`
 	ClusterConfigURLBase       string        `yaml:"cluster_config_url_base"`
+	UIAllowedCIDRs             []string      `yaml:"ui_allowed_cidrs"`
+	UIHtpasswdFile             string        `yaml:"ui_htpasswd_file"`
+	UIClientCertCaFile         string        `yaml:"ui_client_cert_ca_file"`
+	UIAllowedClientCNs         []string      `yaml:"ui_allowed_client_cns"`
 }
 
 // readConfigfile creates the configSettings struct from the config file

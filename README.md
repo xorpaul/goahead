@@ -25,6 +25,20 @@ Flags:
 | `-debug` | `false` | Enable debug logging |
 | `-version` | | Print version and build time, then exit |
 
+## Web interface
+
+The server has a read-only status page on its listen port, for example `https://goahead.example.com:8443/ui/`:
+
+| Path | Content |
+|------|---------|
+| `/ui/` | all clusters with status, restarting hosts, last restart given, last completed restart (and node), last panic, request counters |
+| `/ui/cluster/<name>` | settings, hosts and ACK files, events and the tail of the log of one cluster |
+| `/ui/panic` | hosts that did not come back within `reboot_completion_panic_threshold`, with last check exit code and output, check attempts, last time the host asked goahead again and the `-forget` command |
+| `/ui/activity` | every host whose reboot completion check is sleeping or polling with its number of check attempts, request counters per cluster, recent events |
+| `/ui/status.json` | the same data as JSON |
+
+Check attempts, last seen hosts, request counters and events are kept in memory and start with the goahead process. The state of the clusters comes from the state files and survives restarts. The pages do not trigger anything, they never run DNS or removed host checks, and they can be protected as described under [Protecting the web interface](#protecting-the-web-interface). Without any `ui_*` setting the pages are open to everyone who can reach the port, and goahead logs a warning at startup.
+
 ## Configuration
 
 ### Main config (`config.yml`)
@@ -44,6 +58,23 @@ sendmail_path: /usr/sbin/sendmail   # optional, default /usr/sbin/sendmail
 mail_from: goahead@example.com      # optional, default goahead@<hostname>
 cluster_config_url_base: https://git.example.com/org/cluster-configs/src/branch/main/files/cluster.conf.d/   # optional
 ```
+
+#### Protecting the web interface
+
+Only the `/ui/` routes are affected, the restart API is not. All settings are optional.
+
+```yaml
+ui_allowed_cidrs: [10.0.0.0/8, 192.0.2.7]               # source addresses that may open /ui/
+ui_htpasswd_file: /etc/goahead/ui.htpasswd              # HTTP basic auth, bcrypt hashes only
+ui_client_cert_ca_file: /etc/goahead/ssl/ui-ca.pem      # CA of the client certificates for /ui/
+ui_allowed_client_cns: [alice@example.com, ops-laptop]  # allowed certificate CNs or DNS SANs
+```
+
+- `ui_allowed_cidrs`: always applies, also on top of the methods below. goahead uses the address of the TCP connection and ignores `X-Forwarded-For`, so behind a proxy or load balancer that does not preserve the client address, list the proxy or leave this unset.
+- `ui_htpasswd_file`: one `user:hash` per line, create it with `htpasswd -B -c /etc/goahead/ui.htpasswd alice`. Only bcrypt is supported. The file is re-read when it changes, a broken new file keeps the old users, and a missing or broken file at startup stops goahead. A failed login is delayed and answered with the same error for unknown users and wrong passwords.
+- `ui_client_cert_ca_file` and `ui_allowed_client_cns`: a client certificate that chains to this CA and has one of the listed names as CN or DNS SAN is accepted. The list is required, because an internal CA usually issues certificates to every host. The listener then asks for a client certificate without requiring one (the API clients send none), unless `ssl_require_and_verify_client_cert` is set. `/ui/` verifies the certificate against `ui_client_cert_ca_file` alone, so other CAs trusted for the API do not get in.
+- Certificate and password are alternatives: one valid method is enough. If only `ui_allowed_cidrs` is set, every address in the list gets access.
+- Every access and every failed attempt is logged to the main log with the user or certificate name and the source address. Use HTTPS only, basic auth sends the password with every request.
 
 `sendmail_path`, `mail_from` and `cluster_config_url_base` are only used for the `mail` entries of `reboot_completion_panic_actions`. The link in the mail is `cluster_config_url_base` plus the path of the cluster file relative to `include_dir`. When `include_dir` is the deployed content of `files/cluster.conf.d/live/` (your cluster config repository), the base must end in `.../files/cluster.conf.d/live/`.
 

@@ -220,6 +220,13 @@ func checkCurrentClusterStates() {
 						sleepingClusterChecks[restartingClusterNode] = cc
 						mutex.Unlock()
 						checkerLogger.Info("Sleeping for reboot_completion_check_offset: " + cc.Csetting.RebootCompletionCheckOffset.String() + " for FQDN: " + cc.Fqdn)
+						// without this the host only sat in sleepingClusterChecks and its completion check never ran after a restart of goahead, unless the host inquired with a shorter uptime
+						uptime := ""
+						ackFile := filepath.Join(config.SaveStateDir, cluster, restartingClusterNode+".json")
+						if fileExists(ackFile) {
+							uptime = readAckFile(ackFile, response{}, cluster, clusterLogger).ReportedUptime
+						}
+						scheduleCheckAfterOffset(cc, request{Fqdn: restartingClusterNode, Uptime: uptime})
 						clusterLogger.Info("Restarting cluster checker for " + restartingClusterNode + " inside cluster " + cluster + " check command: " + csetting.RebootCompletionCheck)
 					}
 				}
